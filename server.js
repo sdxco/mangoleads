@@ -16,7 +16,176 @@ app.use(helmet());
 app.use(cors());
 app.use(rateLimit({ windowMs: 60_000, max: 30 }));
 
+// Serve static files from public directory
+app.use(express.static('public'));
+
 const required = f => (typeof f === 'string' && f.trim().length);
+
+// Dashboard endpoints
+app.get('/status', (req, res) => {
+  res.json({ status: 'online', timestamp: new Date().toISOString() });
+});
+
+app.get('/stats', async (req, res) => {
+  try {
+    const totalLeads = await pool.query('SELECT COUNT(*) as count FROM leads');
+    const sentLeads = await pool.query("SELECT COUNT(*) as count FROM leads WHERE status = 'sent'");
+    const queuedLeads = await pool.query("SELECT COUNT(*) as count FROM leads WHERE status = 'queued'");
+    const activeBrands = getActiveBrands().length;
+
+    res.json({
+      totalLeads: parseInt(totalLeads.rows[0].count),
+      sentLeads: parseInt(sentLeads.rows[0].count),
+      queuedLeads: parseInt(queuedLeads.rows[0].count),
+      activeBrands
+    });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+app.get('/api/leads', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const result = await pool.query(
+      'SELECT * FROM leads ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+
+    res.json({ leads: result.rows });
+  } catch (error) {
+    console.error('Leads fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch leads' });
+  }
+});
+
+app.get('/api/leads/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM leads WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Lead fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch lead' });
+  }
+});
+
+app.get('/brands', (req, res) => {
+  const brands = getActiveBrands().map(brand => ({
+    id: brand.id,
+    name: brand.name,
+    active: brand.active,
+    api_url: brand.apiUrl,
+    required_fields: brand.required_fields,
+    country_restrictions: brand.country_restrictions || []
+  }));
+  res.json(brands);
+});
+
+app.get('/analytics', async (req, res) => {
+  try {
+    // Brand statistics
+    const brandStats = await pool.query(`
+      SELECT 
+        brand_id,
+        brand_name,
+        COUNT(*) as total_leads,
+        COUNT(CASE WHEN status = 'sent' THEN 1 END) as sent_leads,
+        COUNT(CASE WHEN status = 'error' THEN 1 END) as error_leads
+      FROM leads 
+      GROUP BY brand_id, brand_name
+      ORDER BY total_leads DESC
+    `);
+
+    // Status distribution
+    const statusStats = await pool.query(`
+      SELECT status, COUNT(*) as count 
+      FROM leads 
+      GROUP BY status
+    `);
+
+    res.json({
+      brandStats: brandStats.rows,
+      statusStats: statusStats.rows
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// New API endpoint for lead submission (cleaner than submit-lead)
+app.post('/api/leads', async (req, res) => {
+  try {
+    const { brand_id, first_name, last_name, email, phone, country } = req.body;
+
+    // Validate brand_id is provided
+    if (!brand_id) {
+      return res.status(400).json({ error: 'brand_id is required' });
+    }
+
+    // Get brand configuration
+    const brand = getBrand(brand_id);
+    if (!brand) {
+      return res.status(400).json({ error: 'Invalid brand_id' });
+    }
+
+    if (!brand.active) {
+      return res.status(400).json({ error: 'Brand is currently inactive' });
+    }
+
+    // Validate required fields for this brand
+    const leadData = { first_name, last_name, email, phone, country };
+    const missingFields = validateLeadData(leadData, brand);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        missing_fields: missingFields
+      });
+    }
+
+    // Validate email format
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Store lead in database
+    const result = await pool.query(
+      `INSERT INTO leads (
+        first_name, last_name, email, phone, country, 
+        brand_id, brand_name, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      RETURNING id`,
+      [first_name, last_name, email, phone, country, 
+       brand_id, brand.name, 'queued', new Date()]
+    );
+
+    const leadId = result.rows[0].id;
+
+    // Add to queue for processing
+    await queue.add('send', { id: leadId, ...leadData, brand_id, brand_name: brand.name });
+
+    res.status(201).json({
+      id: leadId,
+      status: 'queued',
+      brand: brand.name,
+      brand_id: brand_id
+    });
+
+  } catch (error) {
+    console.error('Lead submission error:', error);
+    res.status(500).json({ error: 'Failed to submit lead' });
+  }
+});
 
 app.get('/health', (_, res) => res.send('OK'));
 
@@ -234,3 +403,8 @@ app.get('/brands/stats', async (req, res) => {
 app.listen(process.env.PORT, () =>
   console.log(`Lead-CRM listening on http://localhost:${process.env.PORT}`)
 );
+
+// Serve dashboard as default route
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
