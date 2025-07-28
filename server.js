@@ -5,7 +5,6 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const axios = require('axios');
 const validator = require('validator');
-const bcrypt = require('bcrypt');
 const pool = require('./db');
 const queue = require('./queue');
 
@@ -17,45 +16,40 @@ app.use(cors());
 app.use(rateLimit({ windowMs: 60_000, max: 30 }));
 
 const required = f => (typeof f === 'string' && f.trim().length);
-const hashPwd = pwd => bcrypt.hash(pwd, +process.env.SALT_ROUNDS);
 
 app.get('/health', (_, res) => res.send('OK'));
 
 app.post('/submit-lead', async (req, res) => {
   try {
     const {
-      first_name, last_name, email, password,
-      phonecc, phone, country, referer,
+      first_name, last_name, email, phonecc, phone, country, referer,
       aff_sub, aff_sub2, aff_sub4, aff_sub5, orig_offer
     } = req.body;
 
     // Basic validation
     if (
-      ![first_name, last_name, phonecc, phone, country, password].every(required) ||
+      ![first_name, last_name, phonecc, phone, country].every(required) ||
       !validator.isEmail(email) ||
       !validator.isISO31661Alpha2(country) ||
       !validator.matches(phonecc, /^\+\d{1,4}$/) ||
-      !validator.matches(phone, /^\d{4,14}$/) ||
-      password.length < 8
+      !validator.matches(phone, /^\d{4,14}$/)
     ) return res.status(400).json({ error: 'invalid fields' });
 
-    const password_hash = await hashPwd(password);
     const user_ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 
     const { rows } = await pool.query(
       `INSERT INTO leads
-       (first_name,last_name,email,password_hash,phonecc,phone,country,referer,
+       (first_name,last_name,email,phonecc,phone,country,referer,
         user_ip,aff_id,offer_id,aff_sub,aff_sub2,aff_sub3,aff_sub4,aff_sub5,orig_offer)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
-      [ first_name, last_name, email, password_hash, phonecc, phone, country, referer || null,
+      [ first_name, last_name, email, phonecc, phone, country, referer || null,
         user_ip, process.env.AFF_ID, process.env.OFFER_ID,
         aff_sub, aff_sub2, process.env.LANDING_DOMAIN, aff_sub4, aff_sub5, orig_offer ]
     );
 
     const lead = rows[0];
-    // keep raw password only in memory for outbound call
-    await queue.add('send', { ...lead, raw_password: password });
+    await queue.add('send', lead);
 
     res.status(202).json({ id: lead.id, status: 'queued' });
   } catch (err) {
@@ -78,7 +72,6 @@ app.get('/leads', async (_, res) => {
       first_name: lead.first_name,
       last_name : lead.last_name,
       email     : lead.email,
-      password  : lead.raw_password,
       phonecc   : lead.phonecc,
       phone     : lead.phone,
       country   : lead.country,

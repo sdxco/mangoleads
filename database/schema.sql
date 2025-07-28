@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS leads (
   first_name    VARCHAR(50) NOT NULL,
   last_name     VARCHAR(50) NOT NULL,
   email         CITEXT      NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
   phonecc       VARCHAR(5)  NOT NULL,
   phone         VARCHAR(14) NOT NULL,
   country       CHAR(2)     NOT NULL,
