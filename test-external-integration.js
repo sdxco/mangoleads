@@ -9,7 +9,7 @@ const axios = require('axios');
 
 const CRM_BASE_URL = 'http://localhost:4000';
 
-// Test data for Dekikoy integration
+// Test data for mock brand integration
 const testLead = {
   first_name: 'John',
   last_name: 'Doe',
@@ -17,15 +17,15 @@ const testLead = {
   phonecc: '+1',
   phone: '1234567890',
   country: 'US',
-  brand_id: 'dekikoy-trading', // This will trigger external API integration
+  brand_id: 'mock-trading-test', // This will test internal CRM storage only
   aff_id: '28215',
-  offer_id: '1737',
+  offer_id: '1000',
   user_ip: '192.168.1.100',
   aff_sub: 'test-campaign'
 };
 
-async function testExternalIntegration() {
-  console.log('🚀 Testing External Brand Integration...\n');
+async function testMockIntegration() {
+  console.log('🚀 Testing Mock Brand Integration...\n');
   
   try {
     console.log('📤 Submitting test lead to CRM...');
@@ -35,25 +35,22 @@ async function testExternalIntegration() {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 60000 // 60 second timeout for external API calls
+      timeout: 30000 // 30 second timeout
     });
     
     console.log('\n✅ CRM Response:');
     console.log('Status:', response.status);
     console.log('Data:', JSON.stringify(response.data, null, 2));
     
-    if (response.data.external_api) {
-      if (response.data.external_api.success) {
-        console.log('\n🎉 SUCCESS: Lead successfully sent to Dekikoy API!');
-        console.log('Lead Status:', response.data.status);
-        console.log('External API Status:', response.data.external_api.status);
-      } else {
-        console.log('\n❌ EXTERNAL API FAILED:');
-        console.log('Error:', response.data.external_api.error);
-        console.log('Status:', response.data.external_api.status);
-      }
+    if (response.data.status === 'queued') {
+      console.log('\n🎉 SUCCESS: Lead successfully stored in CRM!');
+      console.log('Lead Status:', response.data.status);
+      console.log('Brand:', response.data.brand);
+      console.log('Lead ID:', response.data.id);
+    } else if (response.data.external_api) {
+      console.log('\n⚠️  Warning: This appears to be an external brand, not mock testing');
     } else {
-      console.log('\n⚠️  Warning: This appears to be an internal brand, not external API integration');
+      console.log('\n✅ Lead processed with status:', response.data.status);
     }
     
     // Test fetching the lead from CRM
@@ -88,15 +85,25 @@ async function testBrandConfiguration() {
   console.log('\n🔧 Testing Brand Configuration...\n');
   
   try {
-    // Test internal brand
-    console.log('Testing internal brand (trading-platform-demo)...');
+    // Test mock brand
+    console.log('Testing mock brand (mock-trading-test)...');
+    const mockResponse = await axios.post(`${CRM_BASE_URL}/api/leads`, {
+      ...testLead,
+      email: 'mock.test@example.com',
+      brand_id: 'mock-trading-test'
+    });
+    
+    console.log('Mock Brand Response:', mockResponse.data.status);
+    
+    // Test demo brand
+    console.log('\nTesting demo brand (trading-platform-demo)...');
     const internalResponse = await axios.post(`${CRM_BASE_URL}/api/leads`, {
       ...testLead,
       email: 'internal.test@example.com',
       brand_id: 'trading-platform-demo'
     });
     
-    console.log('Internal Brand Response:', internalResponse.data.status);
+    console.log('Demo Brand Response:', internalResponse.data.status);
     
     // Test invalid brand
     console.log('\nTesting invalid brand...');
@@ -117,8 +124,8 @@ async function testBrandConfiguration() {
 
 // Run tests
 async function runAllTests() {
-  console.log('🧪 MangoLeads External Integration Test Suite\n');
-  console.log('==========================================\n');
+  console.log('🧪 MangoLeads Mock Brand Test Suite\n');
+  console.log('=================================\n');
   
   // Check if CRM server is running
   try {
@@ -130,18 +137,18 @@ async function runAllTests() {
   }
   
   await testBrandConfiguration();
-  await testExternalIntegration();
+  await testMockIntegration();
   
   console.log('\n🏁 Test Suite Complete!');
   console.log('\nNext Steps:');
   console.log('1. Check the CRM dashboard at http://localhost:4000');
-  console.log('2. Verify leads appear in the leads table');
+  console.log('2. Verify leads appear in the leads table with "Mock Trading Test" brand');
   console.log('3. Test the landing page at autotradeiq-reg.store');
-  console.log('4. Monitor external API responses for real integrations');
+  console.log('4. Once mock testing is complete, configure real external brands');
 }
 
 if (require.main === module) {
   runAllTests().catch(console.error);
 }
 
-module.exports = { testExternalIntegration, testBrandConfiguration };
+module.exports = { testMockIntegration, testBrandConfiguration };

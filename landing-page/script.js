@@ -3,8 +3,8 @@
 const CONFIG = {
     // Production CRM URL
     CRM_URL: 'http://autotradeiq-crm.space', // Your production CRM server
-    BRAND_ID: 'trading-platform-demo', // Will be configured in CRM - update per brand
-    BRAND_NAME: 'TradePro', // Will be configured in CRM - update per brand
+    BRAND_ID: 'mock-trading-test', // Mock brand for testing - stores leads in CRM only
+    BRAND_NAME: 'Mock Trading Test', // Mock brand name for testing
     AFF_ID: '28215', // Update this per affiliate - each affiliate gets their own
     OFFER_ID: '1000' // This landing page's specific offer ID
 };
