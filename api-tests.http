@@ -1,0 +1,62 @@
+### MangoLeads CRM API Tests
+### Use the REST Client extension in VS Code to run these
+
+@baseUrl = http://localhost:4000
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Submit a valid lead
+POST {{baseUrl}}/submit-lead
+Content-Type: application/json
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith", 
+  "email": "jane.smith@example.com",
+  "password": "strongpassword123",
+  "phonecc": "+1",
+  "phone": "5559876543",
+  "country": "US",
+  "referer": "https://landing.example.com",
+  "aff_sub": "facebook_ad",
+  "aff_sub2": "campaign_123",
+  "aff_sub4": "creative_456",
+  "aff_sub5": "placement_789",
+  "orig_offer": "summer_promo"
+}
+
+### Submit lead with invalid data (should fail)
+POST {{baseUrl}}/submit-lead
+Content-Type: application/json
+
+{
+  "first_name": "Test",
+  "last_name": "User",
+  "email": "invalid-email",
+  "password": "123",
+  "phonecc": "+1",
+  "phone": "123",
+  "country": "USA"
+}
+
+### Get recent leads
+GET {{baseUrl}}/leads
+
+### Submit another lead for testing queue
+POST {{baseUrl}}/submit-lead
+Content-Type: application/json
+
+{
+  "first_name": "Mike",
+  "last_name": "Johnson",
+  "email": "mike.johnson@test.com",
+  "password": "testpassword456",
+  "phonecc": "+44",
+  "phone": "7700123456",
+  "country": "GB",
+  "referer": "https://google.com",
+  "aff_sub": "google_search",
+  "aff_sub2": "keyword_crm",
+  "orig_offer": "winter_special"
+}
