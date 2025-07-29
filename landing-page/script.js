@@ -1,8 +1,8 @@
 // Landing Page Script - Submits leads to MangoLeads CRM
 // Configuration
 const CONFIG = {
-    // Production CRM URL
-    CRM_URL: 'http://autotradeiq-crm.space', // Your production CRM server
+    // Production CRM URL - Auto-deploys from GitHub
+    CRM_URL: 'https://autotradeiq-crm.space', // Production CRM server (HTTPS)
     BRAND_ID: 'mock-trading-test', // Mock brand for testing - stores leads in CRM only
     BRAND_NAME: 'Mock Trading Test', // Mock brand name for testing
     AFF_ID: '28215', // Update this per affiliate - each affiliate gets their own
