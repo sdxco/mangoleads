@@ -3,7 +3,7 @@
 const CONFIG = {
     // Production CRM URL - Auto-deploys from GitHub
     CRM_URL: 'https://autotradeiq-crm.space', // Production CRM server (HTTPS)
-    BRAND_ID: 'mock-trading-test', // Mock brand for testing - stores leads in CRM only
+    BRAND_ID: '1000', // Mock brand for testing - stores leads in CRM only (numeric ID)
     BRAND_NAME: 'Mock Trading Test', // Mock brand name for testing
     AFF_ID: '28215', // Update this per affiliate - each affiliate gets their own
     OFFER_ID: '1000' // This landing page's specific offer ID

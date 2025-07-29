@@ -364,14 +364,33 @@ app.get('/brands/stats', async (req, res) => {
     const lead = job.data;
     
     try {
-      // Use brand-specific tracker URL or fall back to lead's stored tracker_url
-      const trackerUrl = lead.brand?.trackerUrl || lead.tracker_url;
-      
-      if (!trackerUrl) {
-        throw new Error('No tracker URL available for this lead');
+      // Get brand configuration
+      const brand = getBrand(lead.brand_id);
+      if (!brand) {
+        throw new Error(`Brand ${lead.brand_id} not found`);
       }
 
-      const qs = new URLSearchParams({
+      // Skip processing for mock brands
+      if (brand.type === 'mock') {
+        console.log(`📝 Mock brand ${lead.brand_id} - Lead ${lead.id} stored locally only`);
+        await pool.query(
+          'UPDATE leads SET status=$1, sent_at=$2 WHERE id=$3', 
+          ['sent', new Date(), lead.id]
+        );
+        return;
+      }
+
+      // Use brand-specific tracker URL
+      const trackerUrl = brand.trackerUrl;
+      
+      if (!trackerUrl) {
+        throw new Error('No tracker URL available for this brand');
+      }
+
+      console.log(`Sending lead ${lead.id} to ${brand.name} (${trackerUrl})`);
+      
+      // Prepare request data
+      const leadData = {
         first_name: lead.first_name,
         last_name: lead.last_name,
         email: lead.email,
@@ -384,11 +403,40 @@ app.get('/brands/stats', async (req, res) => {
         aff_id: lead.aff_id,
         offer_id: lead.offer_id,
         brand_id: lead.brand_id
-      });
+      };
 
-      console.log(`Sending lead ${lead.id} to ${lead.brand_name} (${trackerUrl})`);
+      // Configure request headers
+      const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'MangoLeads-CRM/1.0'
+      };
+
+      // Add JWT token if available
+      if (brand.token) {
+        headers['Authorization'] = `Bearer ${brand.token}`;
+      }
+
+      let response;
       
-      await axios.get(`${trackerUrl}?${qs.toString()}`, { timeout: 10000 });
+      // Try POST with JSON first (modern API)
+      try {
+        response = await axios.post(trackerUrl, leadData, { 
+          headers,
+          timeout: 10000,
+          params: {
+            offer_id: lead.offer_id,
+            aff_id: lead.aff_id
+          }
+        });
+      } catch (postError) {
+        // Fallback to GET with query string (legacy API)
+        console.log(`POST failed, trying GET fallback for lead ${lead.id}`);
+        const qs = new URLSearchParams(leadData);
+        response = await axios.get(`${trackerUrl}?${qs.toString()}`, { 
+          headers,
+          timeout: 10000 
+        });
+      }
       
       // Update lead as successfully sent
       await pool.query(
@@ -396,7 +444,7 @@ app.get('/brands/stats', async (req, res) => {
         ['sent', new Date(), lead.id]
       );
       
-      console.log(`✅ Lead ${lead.id} sent successfully to ${lead.brand_name}`);
+      console.log(`✅ Lead ${lead.id} sent successfully to ${brand.name}`);
       
     } catch (err) {
       console.error(`❌ Failed to send lead ${lead.id}:`, err.message);

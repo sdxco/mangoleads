@@ -343,7 +343,7 @@ async function testApiSubmission(e) {
             
             // Clear form and restore defaults
             e.target.reset();
-            document.getElementById('test_brand_id').value = 'mock-trading-test';
+            document.getElementById('test_brand_id').value = '1000';
             document.getElementById('test_brand_name').value = 'Mock Trading Test';
             document.getElementById('test_aff_id').value = '28215';
             document.getElementById('test_offer_id').value = '1000';
