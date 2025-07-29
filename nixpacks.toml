@@ -1,0 +1,8 @@
+[build]
+cmd = "cd lead-crm && npm install"
+
+[start]
+cmd = "cd lead-crm && npm start"
+
+[variables]
+PORT = "4000"
