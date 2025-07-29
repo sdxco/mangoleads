@@ -21,7 +21,10 @@ function setupEventListeners() {
     });
 
     // Test form submission
-    document.getElementById('test-form').addEventListener('submit', testApiSubmission);
+    const testForm = document.getElementById('testForm');
+    if (testForm) {
+        testForm.addEventListener('submit', testApiSubmission);
+    }
 }
 
 // Switch tabs

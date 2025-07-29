@@ -4,6 +4,18 @@
  */
 
 const brands = {
+  // Mock Brand for Testing - No External API
+  'mock-trading-test': {
+    name: 'Mock Trading Test',
+    trackerUrl: null, // No external URL - stores locally only
+    affId: '28215',
+    offerId: '1000',
+    active: true,
+    type: 'mock', // Special type for internal testing
+    requirements: ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
+    description: 'Mock brand for testing - stores leads in CRM database only'
+  },
+
   // Example Brand 1: Trading Platform
   'trading-platform-demo': {
     name: 'Trading Platform Demo',

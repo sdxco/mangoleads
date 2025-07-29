@@ -24,10 +24,10 @@
                     </h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span id="status-indicator" class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                        <i class="fas fa-circle text-green-500 mr-1"></i>
-                        Checking...
-                    </span>
+                    <div class="flex items-center space-x-2">
+                        <img src="https://via.placeholder.com/32" alt="User" class="w-8 h-8 rounded-full">
+                        <span class="font-medium">Admin</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,6 +94,9 @@
                     <button class="tab-btn active border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="leads">
                         <i class="fas fa-users mr-2"></i>Leads
                     </button>
+                    <button class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="api-integration">
+                        <i class="fas fa-cog mr-2"></i>API Integration
+                    </button>
                     <button class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="brands">
                         <i class="fas fa-building mr-2"></i>Brands Management
                     </button>
@@ -151,6 +154,121 @@
                 <div id="brands-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div class="text-center text-gray-500 py-8">
                         <i class="fas fa-spinner fa-spin mr-2"></i>Loading brands...
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Integration Tab -->
+            <div id="api-integration-tab" class="tab-content p-6 hidden">
+                <h3 class="text-lg font-medium text-gray-900 mb-6">API Integration & Testing</h3>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Test Lead Submission Form -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h4 class="text-md font-semibold mb-4">Test Lead Submission</h4>
+                        <form id="testForm" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                    <input type="text" id="test_first_name" name="first_name" required 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                    <input type="text" id="test_last_name" name="last_name" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="test_email" name="email" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone CC</label>
+                                    <input type="text" id="test_phonecc" name="phonecc" value="+1" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                    <input type="text" id="test_phone" name="phone" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                                <select id="test_country" name="country" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="US">United States</option>
+                                    <option value="CA">Canada</option>
+                                    <option value="GB">United Kingdom</option>
+                                    <option value="DE">Germany</option>
+                                    <option value="FR">France</option>
+                                    <option value="IT">Italy</option>
+                                    <option value="ES">Spain</option>
+                                    <option value="AU">Australia</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" 
+                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Submit Test Lead
+                            </button>
+                        </form>
+                        
+                        <div id="testResult" class="mt-4 hidden">
+                            <div class="p-3 rounded-md">
+                                <p id="testMessage"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- API Documentation -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h4 class="text-md font-semibold mb-4">API Documentation</h4>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <h5 class="font-medium text-gray-900">Endpoint:</h5>
+                                <code class="bg-gray-200 px-2 py-1 rounded text-sm">POST /api/leads</code>
+                            </div>
+                            
+                            <div>
+                                <h5 class="font-medium text-gray-900">Required Fields:</h5>
+                                <ul class="list-disc list-inside text-sm text-gray-600 mt-2">
+                                    <li>first_name (string, max 50)</li>
+                                    <li>last_name (string, max 50)</li>
+                                    <li>email (string, valid email)</li>
+                                    <li>phonecc (string, country code)</li>
+                                    <li>phone (string, max 14)</li>
+                                    <li>country (string, 2-char code)</li>
+                                    <li>brand_id (string, max 50)</li>
+                                    <li>brand_name (string, max 100)</li>
+                                    <li>aff_id (string, max 20)</li>
+                                    <li>offer_id (string, max 10)</li>
+                                </ul>
+                            </div>
+                            
+                            <div>
+                                <h5 class="font-medium text-gray-900">Example Request:</h5>
+                                <pre class="bg-gray-200 p-3 rounded text-xs overflow-x-auto"><code>{
+  "first_name": "John",
+  "last_name": "Doe", 
+  "email": "john@example.com",
+  "phonecc": "+1",
+  "phone": "1234567890",
+  "country": "US",
+  "brand_id": "mock-trading-test",
+  "brand_name": "Mock Trading Test",
+  "aff_id": "28215",
+  "offer_id": "1000"
+}</code></pre>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
