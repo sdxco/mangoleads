@@ -214,6 +214,32 @@
                                 </select>
                             </div>
                             
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Brand ID</label>
+                                    <input type="text" id="test_brand_id" name="brand_id" value="mock-trading-test" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                                    <input type="text" id="test_brand_name" name="brand_name" value="Mock Trading Test" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Aff ID</label>
+                                    <input type="text" id="test_aff_id" name="aff_id" value="28215" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Offer ID</label>
+                                    <input type="text" id="test_offer_id" name="offer_id" value="1000" required
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
                             <button type="submit" 
                                     class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 Submit Test Lead
@@ -317,53 +343,6 @@
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- API Integration Section (Bottom Right) -->
-        <div class="mt-8 flex justify-end">
-            <div class="w-full max-w-md">
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">
-                        <i class="fas fa-code mr-2"></i>API Integration
-                    </h3>
-                    
-                    <!-- API Endpoint Info -->
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <h4 class="font-semibold text-blue-900 mb-2 text-sm">Base URL</h4>
-                        <code class="bg-blue-100 px-2 py-1 rounded text-blue-800 text-xs" id="base-url">Loading...</code>
-                    </div>
-
-                    <!-- Quick API Example -->
-                    <div class="mb-4">
-                        <h4 class="text-sm font-semibold text-gray-900 mb-2">Submit Lead Example</h4>
-                        <div class="bg-gray-900 rounded-lg p-3 text-white">
-                            <pre id="api-example" class="text-xs">Loading...</pre>
-                        </div>
-                        <button class="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs" onclick="copyToClipboard('api-example')">
-                            <i class="fas fa-copy mr-1"></i>Copy
-                        </button>
-                    </div>
-
-                    <!-- Quick Test Form -->
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Quick Test</h4>
-                        <form id="test-form" class="space-y-2">
-                            <input type="text" id="test-first-name" placeholder="First Name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                            <input type="text" id="test-last-name" placeholder="Last Name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                            <input type="email" id="test-email" placeholder="Email" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                            <input type="text" id="test-phone" placeholder="Phone" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                            <select id="test-brand" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                                <option value="">Select Brand</option>
-                            </select>
-                            <input type="text" id="test-country" placeholder="Country" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium text-sm">
-                                <i class="fas fa-paper-plane mr-2"></i>Test Submit
-                            </button>
-                        </form>
-                        <div id="test-result" class="mt-3 hidden"></div>
                     </div>
                 </div>
             </div>

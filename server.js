@@ -125,7 +125,21 @@ app.get('/analytics', async (req, res) => {
 // New API endpoint for lead submission (cleaner than submit-lead)
 app.post('/api/leads', async (req, res) => {
   try {
-    const { brand_id, first_name, last_name, email, phone, country } = req.body;
+    const { 
+      brand_id, 
+      brand_name,
+      first_name, 
+      last_name, 
+      email, 
+      phonecc,
+      phone, 
+      country,
+      aff_id,
+      offer_id,
+      user_ip,
+      aff_sub,
+      referer
+    } = req.body;
 
     // Validate brand_id is provided
     if (!brand_id) {
@@ -143,7 +157,7 @@ app.post('/api/leads', async (req, res) => {
     }
 
     // Validate required fields for this brand
-    const leadData = { first_name, last_name, email, phone, country };
+    const leadData = { first_name, last_name, email, phonecc, phone, country };
     const missingFields = validateLeadData(leadData, brand);
     
     if (missingFields.length > 0) {
@@ -158,26 +172,44 @@ app.post('/api/leads', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    // Get client IP if not provided
+    const clientIP = user_ip || req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
     // Store lead in database
     const result = await pool.query(
       `INSERT INTO leads (
-        first_name, last_name, email, phone, country, 
-        brand_id, brand_name, status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        first_name, last_name, email, phonecc, phone, country, 
+        brand_id, brand_name, aff_id, offer_id, user_ip, aff_sub, 
+        referer, tracker_url, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
       RETURNING id`,
-      [first_name, last_name, email, phone, country, 
-       brand_id, brand.name, 'queued', new Date()]
+      [
+        first_name, last_name, email, phonecc, phone, country, 
+        brand_id, brand_name || brand.name, aff_id || brand.affId, 
+        offer_id || brand.offerId, clientIP, aff_sub || '', 
+        referer || '', brand.trackerUrl || '', 'queued', new Date()
+      ]
     );
 
     const leadId = result.rows[0].id;
 
     // Add to queue for processing
-    await queue.add('send', { id: leadId, ...leadData, brand_id, brand_name: brand.name });
+    await queue.add('send', { 
+      id: leadId, 
+      ...leadData, 
+      brand_id, 
+      brand_name: brand_name || brand.name,
+      aff_id: aff_id || brand.affId,
+      offer_id: offer_id || brand.offerId,
+      user_ip: clientIP,
+      aff_sub: aff_sub || '',
+      referer: referer || ''
+    });
 
     res.status(201).json({
-      id: leadId,
+      leadId: leadId,
       status: 'queued',
-      brand: brand.name,
+      brand: brand_name || brand.name,
       brand_id: brand_id
     });
 
@@ -400,8 +432,10 @@ app.get('/brands/stats', async (req, res) => {
   }
 })();
 
-app.listen(process.env.PORT, () =>
-  console.log(`Lead-CRM listening on http://localhost:${process.env.PORT}`)
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () =>
+  console.log(`Lead-CRM listening on http://localhost:${PORT}`)
 );
 
 // Serve dashboard as default route

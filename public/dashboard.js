@@ -307,12 +307,16 @@ async function testApiSubmission(e) {
     e.preventDefault();
     
     const formData = {
-        brand_id: document.getElementById('test-brand').value,
-        first_name: document.getElementById('test-first-name').value,
-        last_name: document.getElementById('test-last-name').value,
-        email: document.getElementById('test-email').value,
-        phone: document.getElementById('test-phone').value,
-        country: document.getElementById('test-country').value
+        first_name: document.getElementById('test_first_name').value,
+        last_name: document.getElementById('test_last_name').value,
+        email: document.getElementById('test_email').value,
+        phonecc: document.getElementById('test_phonecc').value,
+        phone: document.getElementById('test_phone').value,
+        country: document.getElementById('test_country').value,
+        brand_id: document.getElementById('test_brand_id').value,
+        brand_name: document.getElementById('test_brand_name').value,
+        aff_id: document.getElementById('test_aff_id').value,
+        offer_id: document.getElementById('test_offer_id').value
     };
     
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -329,34 +333,47 @@ async function testApiSubmission(e) {
         
         const result = await response.json();
         
-        const resultDiv = document.getElementById('test-result');
-        resultDiv.className = `mt-4 p-4 rounded-lg ${response.ok ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`;
-        resultDiv.innerHTML = `
-            <h5 class="font-semibold mb-2">${response.ok ? '✅ Success!' : '❌ Error'}</h5>
-            <pre class="text-sm bg-white bg-opacity-50 p-2 rounded">${JSON.stringify(result, null, 2)}</pre>
-        `;
-        resultDiv.classList.remove('hidden');
+        const resultDiv = document.getElementById('testResult');
+        const messageP = document.getElementById('testMessage');
         
-        // Refresh dashboard if successful
         if (response.ok) {
+            messageP.textContent = `Success! Lead submitted. ID: ${result.leadId}`;
+            resultDiv.className = 'mt-4 p-3 rounded-md bg-green-100 text-green-800';
+            resultDiv.classList.remove('hidden');
+            
+            // Clear form and restore defaults
+            e.target.reset();
+            document.getElementById('test_brand_id').value = 'mock-trading-test';
+            document.getElementById('test_brand_name').value = 'Mock Trading Test';
+            document.getElementById('test_aff_id').value = '28215';
+            document.getElementById('test_offer_id').value = '1000';
+            document.getElementById('test_phonecc').value = '+1';
+            
+            // Refresh dashboard
             setTimeout(() => {
                 loadDashboard();
-                // Reset form
-                e.target.reset();
             }, 1000);
+        } else {
+            messageP.textContent = `Error: ${result.error || 'Submission failed'}`;
+            resultDiv.className = 'mt-4 p-3 rounded-md bg-red-100 text-red-800';
+            resultDiv.classList.remove('hidden');
         }
         
     } catch (error) {
-        const resultDiv = document.getElementById('test-result');
-        resultDiv.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800';
-        resultDiv.innerHTML = `
-            <h5 class="font-semibold mb-2">❌ Network Error</h5>
-            <p class="text-sm">${error.message}</p>
-        `;
+        const resultDiv = document.getElementById('testResult');
+        const messageP = document.getElementById('testMessage');
+        messageP.textContent = `Network error: ${error.message}`;
+        resultDiv.className = 'mt-4 p-3 rounded-md bg-red-100 text-red-800';
         resultDiv.classList.remove('hidden');
     } finally {
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
+        
+        // Auto-hide result after 5 seconds
+        setTimeout(() => {
+            const resultDiv = document.getElementById('testResult');
+            if (resultDiv) resultDiv.classList.add('hidden');
+        }, 5000);
     }
 }
 
