@@ -1,0 +1,16 @@
+{
+  "name": "mangoleads",
+  "version": "1.0.0",
+  "description": "A comprehensive lead management system with support for external brand API integrations.",
+  "main": "test-external-integration.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.11.0"
+  }
+}
