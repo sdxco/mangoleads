@@ -12,7 +12,7 @@ const { getBrand, getActiveBrands, validateLeadData } = require('./brands-config
 // Auto-initialize database on startup
 async function initializeDatabase() {
   try {
-    console.log('🚀 Initializing MangoLeads database...');
+    console.log('🚀 Initializing MangoLeads database v2...');
     
     // Create leads table if it doesn't exist
     await pool.query(`
