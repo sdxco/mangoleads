@@ -364,6 +364,18 @@ app.get('/setup-database', async (req, res) => {
   try {
     console.log('🔧 Manual database setup triggered...');
     
+    // Check if DATABASE_URL is configured
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({
+        success: false,
+        error: 'DATABASE_URL environment variable is not configured. Please add your PostgreSQL connection string to Railway variables.',
+        help: 'Go to Railway dashboard → Your service → Variables tab → Add DATABASE_URL',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    console.log('Database URL configured, attempting connection...');
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS leads (
         id            BIGSERIAL PRIMARY KEY,
@@ -394,6 +406,8 @@ app.get('/setup-database', async (req, res) => {
       );
     `);
     
+    console.log('Table creation successful, creating indexes...');
+    
     await pool.query(`
       CREATE INDEX IF NOT EXISTS leads_email_idx ON leads (email);
       CREATE INDEX IF NOT EXISTS leads_brand_idx ON leads (brand_id);
@@ -408,6 +422,8 @@ app.get('/setup-database', async (req, res) => {
       WHERE table_schema = 'public' AND table_name = 'leads'
     `);
     
+    console.log('✅ Database setup completed successfully');
+    
     res.json({
       success: true,
       message: 'Database table created successfully!',
@@ -420,6 +436,8 @@ app.get('/setup-database', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message,
+      error_code: error.code,
+      database_url_configured: !!process.env.DATABASE_URL,
       timestamp: new Date().toISOString()
     });
   }
