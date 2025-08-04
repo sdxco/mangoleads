@@ -9,6 +9,72 @@ const pool = require('./db');
 const queue = require('./queue');
 const { getBrand, getActiveBrands, validateLeadData } = require('./brands-config');
 
+// Auto-initialize database on startup
+async function initializeDatabase() {
+  try {
+    console.log('🚀 Initializing MangoLeads database...');
+    
+    // Create leads table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id            BIGSERIAL PRIMARY KEY,
+        first_name    VARCHAR(50) NOT NULL,
+        last_name     VARCHAR(50) NOT NULL,
+        email         VARCHAR(255) NOT NULL,
+        phonecc       VARCHAR(5)  NOT NULL,
+        phone         VARCHAR(14) NOT NULL,
+        country       CHAR(2)     NOT NULL,
+        referer       TEXT,
+        user_ip       INET,
+        aff_id        VARCHAR(20) NOT NULL,
+        offer_id      VARCHAR(10) NOT NULL,
+        brand_id      VARCHAR(50),
+        brand_name    VARCHAR(100),
+        tracker_url   TEXT,
+        aff_sub       TEXT,
+        aff_sub2      TEXT,
+        aff_sub3      TEXT,
+        aff_sub4      TEXT,
+        aff_sub5      TEXT,
+        orig_offer    TEXT,
+        status        TEXT CHECK (status IN ('queued','sent','error','processing')) DEFAULT 'queued',
+        attempts      SMALLINT DEFAULT 0,
+        last_error    TEXT,
+        sent_at       TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    
+    // Create indexes for better performance
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS leads_email_idx ON leads (email);
+      CREATE INDEX IF NOT EXISTS leads_brand_idx ON leads (brand_id);
+      CREATE INDEX IF NOT EXISTS leads_status_idx ON leads (status);
+      CREATE INDEX IF NOT EXISTS leads_created_idx ON leads (created_at DESC);
+    `);
+    
+    // Check if table was created successfully
+    const tableCheck = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'leads'
+    `);
+    
+    if (tableCheck.rows.length > 0) {
+      console.log('✅ Database initialized successfully - leads table ready');
+    } else {
+      console.log('❌ Database initialization failed - table not created');
+    }
+    
+  } catch (error) {
+    console.error('❌ Database initialization error:', error.message);
+    console.log('🔄 Server will continue, but database operations may fail');
+  }
+}
+
+// Initialize database immediately
+initializeDatabase();
+
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -220,6 +286,58 @@ app.post('/api/leads', async (req, res) => {
 });
 
 app.get('/health', (_, res) => res.send('OK'));
+
+// Database debug endpoint
+app.get('/debug/database', async (req, res) => {
+  try {
+    // Test database connection
+    const connectionTest = await pool.query('SELECT NOW() as current_time, version() as pg_version');
+    
+    // Check if leads table exists
+    const tableCheck = await pool.query(`
+      SELECT table_name, column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'leads'
+      ORDER BY ordinal_position
+    `);
+    
+    // Count existing leads
+    let leadsCount = 0;
+    let sampleLead = null;
+    try {
+      const countResult = await pool.query('SELECT COUNT(*) as count FROM leads');
+      leadsCount = countResult.rows[0].count;
+      
+      if (leadsCount > 0) {
+        const sampleResult = await pool.query('SELECT * FROM leads ORDER BY created_at DESC LIMIT 1');
+        sampleLead = sampleResult.rows[0];
+      }
+    } catch (err) {
+      console.log('Error counting leads:', err.message);
+    }
+    
+    res.json({
+      status: 'connected',
+      database_url_configured: !!process.env.DATABASE_URL,
+      current_time: connectionTest.rows[0].current_time,
+      postgres_version: connectionTest.rows[0].pg_version,
+      leads_table_exists: tableCheck.rows.length > 0,
+      table_columns: tableCheck.rows.length,
+      leads_count: leadsCount,
+      sample_lead: sampleLead,
+      environment: process.env.NODE_ENV || 'development'
+    });
+    
+  } catch (error) {
+    console.error('Database debug error:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      code: error.code,
+      database_url_configured: !!process.env.DATABASE_URL
+    });
+  }
+});
 
 app.post('/submit-lead', async (req, res) => {
   try {
