@@ -359,6 +359,72 @@ app.get('/debug/database', async (req, res) => {
   }
 });
 
+// Manual database setup endpoint
+app.get('/setup-database', async (req, res) => {
+  try {
+    console.log('🔧 Manual database setup triggered...');
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id            BIGSERIAL PRIMARY KEY,
+        first_name    VARCHAR(50) NOT NULL,
+        last_name     VARCHAR(50) NOT NULL,
+        email         VARCHAR(255) NOT NULL,
+        phonecc       VARCHAR(5)  NOT NULL,
+        phone         VARCHAR(14) NOT NULL,
+        country       CHAR(2)     NOT NULL,
+        referer       TEXT,
+        user_ip       INET,
+        aff_id        VARCHAR(20) NOT NULL,
+        offer_id      VARCHAR(10) NOT NULL,
+        brand_id      VARCHAR(50),
+        brand_name    VARCHAR(100),
+        tracker_url   TEXT,
+        aff_sub       TEXT,
+        aff_sub2      TEXT,
+        aff_sub3      TEXT,
+        aff_sub4      TEXT,
+        aff_sub5      TEXT,
+        orig_offer    TEXT,
+        status        TEXT CHECK (status IN ('queued','sent','error','processing')) DEFAULT 'queued',
+        attempts      SMALLINT DEFAULT 0,
+        last_error    TEXT,
+        sent_at       TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS leads_email_idx ON leads (email);
+      CREATE INDEX IF NOT EXISTS leads_brand_idx ON leads (brand_id);
+      CREATE INDEX IF NOT EXISTS leads_status_idx ON leads (status);
+      CREATE INDEX IF NOT EXISTS leads_created_idx ON leads (created_at DESC);
+    `);
+    
+    // Verify table was created
+    const verifyResult = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'leads'
+    `);
+    
+    res.json({
+      success: true,
+      message: 'Database table created successfully!',
+      table_exists: verifyResult.rows.length > 0,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Database setup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.post('/submit-lead', async (req, res) => {
   try {
     const {
