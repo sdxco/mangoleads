@@ -287,6 +287,26 @@ app.post('/api/leads', async (req, res) => {
 
 app.get('/health', (_, res) => res.send('OK'));
 
+// Simple database test endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as time, COUNT(*) as count FROM leads');
+    res.json({
+      status: 'success',
+      database_connected: true,
+      current_time: result.rows[0].time,
+      leads_count: result.rows[0].count
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      database_connected: false,
+      error: error.message,
+      error_code: error.code
+    });
+  }
+});
+
 // Database debug endpoint
 app.get('/debug/database', async (req, res) => {
   try {
