@@ -1340,21 +1340,22 @@ function showDeleteResults(result) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
             <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-semibold text-red-600">
-                        <i class="fas fa-trash mr-2"></i>Integration Removal
+                    <h3 class="text-xl font-semibold text-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>Brand Deactivated
                     </h3>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 
-                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                    <h4 class="font-medium text-red-800 mb-2">
-                        🗑️ Integration Removal Instructions
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <h4 class="font-medium text-green-800 mb-2">
+                        ✅ Brand Deactivated Successfully
                     </h4>
-                    <p class="text-red-700 text-sm">
+                    <p class="text-green-700 text-sm">
                         ${result.message}
                     </p>
+                    ${result.note ? `<p class="text-green-600 text-xs mt-2">${result.note}</p>` : ''}
                 </div>
                 
                 <div class="space-y-4">
@@ -1370,23 +1371,21 @@ function showDeleteResults(result) {
                             <div>
                                 <span class="font-medium">Existing Leads:</span> ${result.existing_leads}
                             </div>
+                            <div>
+                                <span class="font-medium">Status:</span> 
+                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Deactivated</span>
+                            </div>
                         </div>
                     </div>
                     
-                    ${result.warning ? `
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <h4 class="font-medium text-yellow-800 mb-2">⚠️ Important Notice:</h4>
-                            <p class="text-yellow-700 text-sm">${result.warning}</p>
-                        </div>
-                    ` : ''}
-                    
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 class="font-medium text-blue-800 mb-3">📋 Removal Steps:</h4>
-                        <ol class="list-decimal list-inside space-y-2 text-blue-700 text-sm">
-                            <li>${result.instructions.step1}</li>
-                            <li>${result.instructions.step2}</li>
-                            <li>${result.instructions.step3}</li>
-                        </ol>
+                        <h4 class="font-medium text-blue-800 mb-3">🎯 What Happened:</h4>
+                        <ul class="list-disc list-inside space-y-1 text-blue-700 text-sm">
+                            <li>Brand has been deactivated immediately</li>
+                            <li>No new leads will be accepted for this brand</li>
+                            <li>Existing leads are preserved in the database</li>
+                            <li>You can reactivate the brand anytime using the toggle button</li>
+                        </ul>
                     </div>
                 </div>
                 
