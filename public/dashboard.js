@@ -1230,6 +1230,11 @@ function deleteIntegration(integrationId, buttonElement) {
     }
 
     const button = buttonElement;
+    if (!button) {
+        console.error('Button element is null or undefined');
+        return;
+    }
+    
     const originalContent = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Removing...';
@@ -1252,9 +1257,9 @@ function deleteIntegration(integrationId, buttonElement) {
             }
         })
         .catch(error => {
+            console.error('Delete error:', error);
             button.disabled = false;
             button.innerHTML = originalContent;
-            console.error('Delete error:', error);
             showNotification('Failed to delete integration: ' + error.message, 'error');
         });
 }

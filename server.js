@@ -118,7 +118,18 @@ initializeDatabase();
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    },
+}));
 app.use(cors());
 app.use(rateLimit({ windowMs: 60_000, max: 30 }));
 
