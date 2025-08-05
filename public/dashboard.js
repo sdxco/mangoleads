@@ -49,6 +49,7 @@ function switchTab(tabName) {
     // Load tab-specific data
     if (tabName === 'brands') loadBrands();
     if (tabName === 'api') loadApiGuide();
+    if (tabName === 'api-integration') loadIntegrations();
     if (tabName === 'analytics') loadAnalytics();
 }
 
@@ -750,3 +751,467 @@ window.addEventListener('beforeunload', () => {
         clearInterval(dashboard.refreshInterval);
     }
 });
+
+// ============================================
+// API INTEGRATION MANAGEMENT FUNCTIONS
+// ============================================
+
+// Load integrations
+function loadIntegrations() {
+    fetch('/api/integrations')
+        .then(response => response.json())
+        .then(integrations => {
+            const container = document.getElementById('integrations-list');
+            
+            if (integrations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="max-w-md mx-auto">
+                            <i class="fas fa-plug text-6xl text-gray-300 mb-4"></i>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No API Integrations</h3>
+                            <p class="text-gray-500 mb-6">Get started by adding your first brand integration to start receiving and processing leads automatically.</p>
+                            <button onclick="showAddIntegrationModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium">
+                                <i class="fas fa-plus mr-2"></i>Add Your First Integration
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="grid gap-6">
+                    ${integrations.map(integration => `
+                        <div class="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h4 class="text-lg font-semibold text-gray-900">${escapeHtml(integration.name)}</h4>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full ${integration.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            <i class="fas fa-circle text-xs mr-1"></i>
+                                            ${integration.active ? 'Active' : 'Inactive'}
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                            ID: ${integration.id}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-3">
+                                        <i class="fas fa-link mr-1"></i>
+                                        <span class="font-mono text-xs">${escapeHtml(integration.tracker_url)}</span>
+                                    </p>
+                                </div>
+                                <div class="flex space-x-2 ml-4">
+                                    <button onclick="testIntegration('${integration.id}')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                        <i class="fas fa-flask mr-1"></i>Test
+                                    </button>
+                                    <button onclick="viewIntegrationDetails('${integration.id}')" 
+                                            class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                        <i class="fas fa-eye mr-1"></i>View
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <span class="font-medium text-gray-700 block mb-1">Affiliate ID</span>
+                                    <span class="text-gray-900 font-mono">${escapeHtml(integration.aff_id)}</span>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <span class="font-medium text-gray-700 block mb-1">Offer ID</span>
+                                    <span class="text-gray-900 font-mono">${escapeHtml(integration.offer_id)}</span>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <span class="font-medium text-gray-700 block mb-1">Method</span>
+                                    <span class="text-gray-900 font-semibold">${integration.method}</span>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <span class="font-medium text-gray-700 block mb-1">Authentication</span>
+                                    <span class="text-gray-900">${integration.has_token ? '🔒 JWT Token' : '🔓 None'}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="border-t pt-3">
+                                <span class="font-medium text-gray-700 text-sm">Required Fields:</span>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    ${integration.required_fields.map(field => `
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">${escapeHtml(field)}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error loading integrations:', error);
+            document.getElementById('integrations-list').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-4"></i>
+                    <p class="text-red-600 font-medium">Error loading integrations</p>
+                    <p class="text-gray-500 text-sm mt-2">${error.message}</p>
+                    <button onclick="loadIntegrations()" class="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-sync mr-2"></i>Retry
+                    </button>
+                </div>
+            `;
+        });
+}
+
+// Test integration
+function testIntegration(integrationId) {
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Testing...';
+
+    fetch(`/api/integrations/${integrationId}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(response => response.json())
+        .then(result => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            showTestResults(result);
+        })
+        .catch(error => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            console.error('Test error:', error);
+            showNotification('Test failed: ' + error.message, 'error');
+        });
+}
+
+// Show test results modal
+function showTestResults(result) {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-flask mr-2"></i>Test Results - ${escapeHtml(result.brand_name)}
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            <i class="fas fa-${result.success ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
+                            ${result.success ? 'SUCCESS' : 'FAILED'}
+                        </span>
+                        ${result.status_code ? `<span class="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">Status: ${result.status_code}</span>` : ''}
+                        <span class="text-xs text-gray-500">${new Date(result.timestamp).toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                ${result.error ? `
+                    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h4 class="font-medium text-red-800 mb-2">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Error Details:
+                        </h4>
+                        <p class="text-red-700 font-mono text-sm">${escapeHtml(result.error)}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-3">
+                            <i class="fas fa-upload mr-1"></i>Test Data Sent:
+                        </h4>
+                        <pre class="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto border"><code>${JSON.stringify(result.test_data, null, 2)}</code></pre>
+                    </div>
+                    
+                    ${result.response_data ? `
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-3">
+                                <i class="fas fa-download mr-1"></i>API Response:
+                            </h4>
+                            <pre class="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto border"><code>${JSON.stringify(result.response_data, null, 2)}</code></pre>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Add integration modal
+function showAddIntegrationModal() {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-plus mr-2"></i>Add New API Integration
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="add-integration-form" onsubmit="submitNewIntegration(event)">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-tag mr-1"></i>Brand Name
+                                </label>
+                                <input type="text" name="name" required 
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                       placeholder="e.g., Dekikoy VIP Trading Platform">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-link mr-1"></i>Tracker URL
+                                </label>
+                                <input type="url" name="tracker_url" required 
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                       placeholder="https://vip.dekikoy.com/tracker">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-user-friends mr-1"></i>Affiliate ID
+                                </label>
+                                <input type="text" name="aff_id" required 
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                       placeholder="28215">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-bullseye mr-1"></i>Offer ID
+                                </label>
+                                <input type="text" name="offer_id" required 
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                       placeholder="1737">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-key mr-1"></i>JWT Token (Optional)
+                            </label>
+                            <textarea name="token" 
+                                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                      rows="3" 
+                                      placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOi..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Paste your JWT authentication token if required by the API</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-cog mr-1"></i>HTTP Method
+                                </label>
+                                <select name="method" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="POST">POST (Recommended)</option>
+                                    <option value="GET">GET</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-toggle-on mr-1"></i>Status
+                                </label>
+                                <select name="active" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
+                        <button type="button" onclick="closeModal()" 
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium">
+                            <i class="fas fa-plus mr-2"></i>Add Integration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Submit new integration
+function submitNewIntegration(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (key === 'active') {
+            data[key] = value === 'true';
+        } else {
+            data[key] = value.trim();
+        }
+    }
+    
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalContent = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Adding...';
+    
+    fetch('/api/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(result => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent;
+            
+            if (result.success) {
+                closeModal();
+                showIntegrationConfig(result);
+                loadIntegrations(); // Refresh the list
+            } else {
+                showNotification('Error: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent;
+            console.error('Error adding integration:', error);
+            showNotification('Failed to add integration: ' + error.message, 'error');
+        });
+}
+
+// Show integration configuration modal
+function showIntegrationConfig(result) {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>Integration Configuration Generated!
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <h4 class="font-medium text-green-800 mb-2">✅ Configuration Ready</h4>
+                    <p class="text-green-700 text-sm">Your API integration configuration has been generated. Follow the steps below to activate it.</p>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-3">📋 Integration Configuration:</h4>
+                        <pre class="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto border font-mono"><code>${JSON.stringify(result.brand, null, 2)}</code></pre>
+                        <button onclick="copyToClipboard(this, '${JSON.stringify(result.brand).replace(/'/g, "\\'")}'); showNotification('Configuration copied to clipboard!', 'success')" 
+                                class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                            <i class="fas fa-copy mr-1"></i>Copy Configuration
+                        </button>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-800 mb-3">🚀 Activation Steps:</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-blue-700 text-sm">
+                            <li>Copy the configuration above</li>
+                            <li>Open your <code class="bg-blue-100 px-1 rounded">brands-config.js</code> file</li>
+                            <li>Add the configuration to the brands array</li>
+                            <li>Deploy your application</li>
+                            <li>The integration will be active and ready to receive leads!</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-8 pt-6 border-t">
+                    <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>Got It
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// View integration details
+function viewIntegrationDetails(integrationId) {
+    // This would show detailed configuration for an existing integration
+    showNotification('Integration details view - Coming soon!', 'info');
+}
+
+// Close modal
+function closeModal() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Copy to clipboard utility
+function copyToClipboard(button, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalContent = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+        }, 2000);
+    });
+}
+
+// HTML escape utility
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    const types = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 ${types[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-sm`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <span class="flex-1">${escapeHtml(message)}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}

@@ -9,6 +9,13 @@ const pool = require('./db');
 const queue = require('./queue');
 const { getBrand, getActiveBrands, validateLeadData } = require('./brands-config');
 
+// Generate unique user ID for each client
+function generateUniqueUserId() {
+  const timestamp = Date.now().toString(36); // Base36 timestamp
+  const randomPart = Math.random().toString(36).substring(2, 8); // Random string
+  return `USER_${timestamp}_${randomPart}`.toUpperCase();
+}
+
 // Auto-initialize database on startup
 async function initializeDatabase() {
   try {
@@ -278,18 +285,21 @@ app.post('/api/leads', async (req, res) => {
     // Get client IP if not provided
     const clientIP = user_ip || req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
+    // Generate unique user ID for this lead
+    const uniqueUserId = generateUniqueUserId();
+
     // Store lead in database
     const result = await pool.query(
       `INSERT INTO leads (
         first_name, last_name, email, phonecc, phone, country, 
-        brand_id, brand_name, aff_id, offer_id, user_ip, aff_sub, 
+        brand_id, brand_name, aff_id, offer_id, user_ip, user_id, aff_sub, 
         referer, tracker_url, status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
       RETURNING id`,
       [
         first_name, last_name, email, phonecc, phone, country, 
         brand_id, brand_name || brand.name, aff_id || brand.affId, 
-        offer_id || brand.offerId, clientIP, aff_sub || '', 
+        offer_id || brand.offerId, clientIP, uniqueUserId, aff_sub || '', 
         referer || '', brand.trackerUrl || '', 'queued', new Date()
       ]
     );
@@ -529,14 +539,17 @@ app.post('/submit-lead', async (req, res) => {
 
     const user_ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 
+    // Generate unique user ID for this lead
+    const uniqueUserId = generateUniqueUserId();
+
     // Insert lead with brand information
     const { rows } = await pool.query(
       `INSERT INTO leads
-       (first_name,last_name,email,phonecc,phone,country,age,referer,user_ip,
+       (first_name,last_name,email,phonecc,phone,country,age,referer,user_ip,user_id,
         brand_id,brand_name,tracker_url,aff_id,offer_id,aff_sub,aff_sub2,aff_sub3,aff_sub4,aff_sub5,orig_offer)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING *`,
-      [first_name, last_name, email, phonecc, phone, country, age || null, referer || null, user_ip,
+      [first_name, last_name, email, phonecc, phone, country, age || null, referer || null, user_ip, uniqueUserId,
        brand_id, brand.name, brand.trackerUrl, brand.affId, brand.offerId,
        aff_sub, aff_sub2, process.env.LANDING_DOMAIN, aff_sub4, aff_sub5, orig_offer]
     );
@@ -553,6 +566,178 @@ app.post('/submit-lead', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'server error' });
+  }
+});
+
+// API Integration Management Endpoints
+
+// Get all brand integrations
+app.get('/api/integrations', (req, res) => {
+  const brands = getActiveBrands().map(brand => ({
+    id: brand.id,
+    name: brand.name,
+    active: brand.active,
+    type: brand.type,
+    api_url: brand.apiUrl,
+    tracker_url: brand.trackerUrl,
+    aff_id: brand.affId,
+    offer_id: brand.offerId,
+    required_fields: brand.required_fields,
+    country_restrictions: brand.country_restrictions || [],
+    has_token: !!brand.token,
+    method: brand.method || 'POST',
+    format: brand.format || 'json'
+  }));
+  res.json(brands);
+});
+
+// Test an API integration
+app.post('/api/integrations/:id/test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brand = getBrand(id);
+    
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Create test lead data
+    const testLead = {
+      first_name: 'Test',
+      last_name: 'User',
+      email: 'test@example.com',
+      phonecc: '+1',
+      phone: '5551234567',
+      country: 'US',
+      user_ip: '127.0.0.1',
+      user_id: generateUniqueUserId(),
+      aff_id: brand.affId,
+      offer_id: brand.offerId,
+      aff_sub: 'test',
+      aff_sub2: 'crm_test',
+      aff_sub3: process.env.LANDING_DOMAIN || 'mangoleads.com'
+    };
+
+    // Configure request headers
+    const headers = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'MangoLeads-CRM-Test/1.0'
+    };
+
+    if (brand.token) {
+      headers['Authorization'] = `Bearer ${brand.token}`;
+    }
+
+    let response;
+    let success = false;
+    let errorMessage = '';
+
+    try {
+      // Try the API call
+      if (brand.method === 'GET') {
+        const qs = new URLSearchParams(testLead);
+        response = await axios.get(`${brand.trackerUrl}?${qs.toString()}`, { 
+          headers,
+          timeout: 10000 
+        });
+      } else {
+        response = await axios.post(brand.trackerUrl, testLead, { 
+          headers,
+          timeout: 10000,
+          params: {
+            offer_id: brand.offerId,
+            aff_id: brand.affId
+          }
+        });
+      }
+      
+      success = response.status >= 200 && response.status < 300;
+      
+    } catch (error) {
+      errorMessage = error.message;
+      if (error.response) {
+        errorMessage += ` (Status: ${error.response.status})`;
+        if (error.response.data) {
+          errorMessage += ` - ${JSON.stringify(error.response.data)}`;
+        }
+      }
+    }
+
+    res.json({
+      brand_id: id,
+      brand_name: brand.name,
+      success,
+      status_code: response?.status || 0,
+      response_data: response?.data || null,
+      error: errorMessage || null,
+      test_data: testLead,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Integration test error:', error);
+    res.status(500).json({ error: 'Failed to test integration' });
+  }
+});
+
+// Add new brand integration (generates configuration)
+app.post('/api/integrations', async (req, res) => {
+  try {
+    const {
+      name,
+      api_url,
+      tracker_url,
+      aff_id,
+      offer_id,
+      token,
+      method,
+      required_fields,
+      country_restrictions,
+      active
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !tracker_url || !aff_id || !offer_id) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: name, tracker_url, aff_id, offer_id' 
+      });
+    }
+
+    // Generate new brand ID
+    const newId = offer_id; // Use offer_id as brand ID
+
+    // Create new brand configuration
+    const newBrand = {
+      id: newId,
+      name,
+      active: active !== false,
+      type: 'live',
+      apiUrl: api_url || tracker_url,
+      trackerUrl: tracker_url,
+      affId: aff_id,
+      offerId: offer_id,
+      token: token || null,
+      method: method || 'POST',
+      format: 'json',
+      required_fields: required_fields || ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
+      country_restrictions: country_restrictions || []
+    };
+
+    res.status(201).json({
+      success: true,
+      message: 'Brand integration configuration generated successfully',
+      brand: newBrand,
+      instructions: {
+        step1: 'Copy the brand configuration below',
+        step2: 'Add it to your brands-config.js file in the brands array',
+        step3: 'Redeploy your application',
+        step4: 'The integration will be active and ready to receive leads'
+      }
+    });
+
+  } catch (error) {
+    console.error('Add integration error:', error);
+    res.status(500).json({ error: 'Failed to add integration' });
   }
 });
 
@@ -660,7 +845,12 @@ app.get('/brands/stats', async (req, res) => {
         country: lead.country,
         age: lead.age || '',
         user_ip: lead.user_ip,
+        user_id: lead.user_id,
+        aff_sub: lead.aff_sub || '',
+        aff_sub2: lead.aff_sub2 || '',
         aff_sub3: lead.aff_sub3 || process.env.LANDING_DOMAIN,
+        aff_sub4: lead.aff_sub4 || '',
+        aff_sub5: lead.aff_sub5 || '',
         aff_id: lead.aff_id,
         offer_id: lead.offer_id,
         brand_id: lead.brand_id

@@ -149,6 +149,23 @@
                     </div>
             </div>
 
+            <!-- API Integration Tab -->
+            <div id="api-integration-tab" class="tab-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900">🔌 API Integration Management</h3>
+                    <button onclick="showAddIntegrationModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-plus mr-2"></i>Add Integration
+                    </button>
+                </div>
+                
+                <div id="integrations-list">
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">Loading integrations...</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Brands Tab -->
             <div id="brands-tab" class="tab-content p-6 hidden">
                 <div class="flex justify-between items-center mb-4">
