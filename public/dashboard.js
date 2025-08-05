@@ -274,6 +274,19 @@ async function loadBrands() {
                         ''
                     }
                 </div>
+                <div class="flex gap-2 mt-4 pt-4 border-t">
+                    <button onclick="toggleBrand('${brand.id}')" 
+                            class="flex-1 px-3 py-2 text-sm font-medium rounded ${brand.active 
+                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                                : 'bg-green-100 text-green-800 hover:bg-green-200'}">
+                        <i class="fas ${brand.active ? 'fa-pause' : 'fa-play'} mr-1"></i>
+                        ${brand.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button onclick="deleteBrand('${brand.id}')" 
+                            class="px-3 py-2 text-sm font-medium bg-red-100 text-red-800 hover:bg-red-200 rounded">
+                        <i class="fas fa-trash mr-1"></i>Delete
+                    </button>
+                </div>
             `;
             brandsList.appendChild(card);
         });
@@ -814,6 +827,14 @@ function loadIntegrations() {
                                             class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
                                         <i class="fas fa-eye mr-1"></i>View
                                     </button>
+                                    <button onclick="toggleIntegration('${integration.id}', ${integration.active})" 
+                                            class="bg-${integration.active ? 'orange' : 'green'}-600 hover:bg-${integration.active ? 'orange' : 'green'}-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                        <i class="fas fa-${integration.active ? 'pause' : 'play'} mr-1"></i>${integration.active ? 'Disable' : 'Enable'}
+                                    </button>
+                                    <button onclick="deleteIntegration('${integration.id}')" 
+                                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                        <i class="fas fa-trash mr-1"></i>Remove
+                                    </button>
                                 </div>
                             </div>
                             
@@ -1165,6 +1186,216 @@ function viewIntegrationDetails(integrationId) {
     showNotification('Integration details view - Coming soon!', 'info');
 }
 
+// Toggle integration active status
+function toggleIntegration(integrationId, currentStatus) {
+    const action = currentStatus ? 'disable' : 'enable';
+    
+    if (!confirm(`Are you sure you want to ${action} this integration?`)) {
+        return;
+    }
+
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+
+    fetch(`/api/integrations/${integrationId}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(response => response.json())
+        .then(result => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            
+            if (result.success) {
+                showToggleResults(result);
+                loadIntegrations(); // Refresh the list
+            } else {
+                showNotification('Error: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            console.error('Toggle error:', error);
+            showNotification('Failed to toggle integration: ' + error.message, 'error');
+        });
+}
+
+// Delete integration
+function deleteIntegration(integrationId) {
+    if (!confirm('Are you sure you want to remove this integration?\n\nThis will generate instructions to remove it from your configuration.')) {
+        return;
+    }
+
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Removing...';
+
+    fetch(`/api/integrations/${integrationId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(response => response.json())
+        .then(result => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            
+            if (result.success) {
+                showDeleteResults(result);
+                loadIntegrations(); // Refresh the list
+            } else {
+                showNotification('Error: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+            console.error('Delete error:', error);
+            showNotification('Failed to delete integration: ' + error.message, 'error');
+        });
+}
+
+// Show toggle results modal
+function showToggleResults(result) {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-orange-600">
+                        <i class="fas fa-toggle-${result.new_status ? 'on' : 'off'} mr-2"></i>Integration ${result.new_status ? 'Activation' : 'Deactivation'}
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                    <h4 class="font-medium text-orange-800 mb-2">
+                        🔧 Configuration Update Required
+                    </h4>
+                    <p class="text-orange-700 text-sm">
+                        ${result.message}
+                    </p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Brand Details:</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium">Brand ID:</span> ${result.brand_id}
+                            </div>
+                            <div>
+                                <span class="font-medium">Brand Name:</span> ${escapeHtml(result.brand_name)}
+                            </div>
+                            <div>
+                                <span class="font-medium">Current Status:</span> 
+                                <span class="px-2 py-1 rounded text-xs ${result.current_status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    ${result.current_status ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="font-medium">New Status:</span> 
+                                <span class="px-2 py-1 rounded text-xs ${result.new_status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    ${result.new_status ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-800 mb-3">📋 Required Steps:</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-blue-700 text-sm">
+                            <li>${result.instructions.step1}</li>
+                            <li>${result.instructions.step2}</li>
+                            <li>${result.instructions.step3}</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>Understood
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Show delete results modal
+function showDeleteResults(result) {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-red-600">
+                        <i class="fas fa-trash mr-2"></i>Integration Removal
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <h4 class="font-medium text-red-800 mb-2">
+                        🗑️ Integration Removal Instructions
+                    </h4>
+                    <p class="text-red-700 text-sm">
+                        ${result.message}
+                    </p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Brand Details:</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium">Brand ID:</span> ${result.brand_id}
+                            </div>
+                            <div>
+                                <span class="font-medium">Brand Name:</span> ${escapeHtml(result.brand_name)}
+                            </div>
+                            <div>
+                                <span class="font-medium">Existing Leads:</span> ${result.existing_leads}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${result.warning ? `
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <h4 class="font-medium text-yellow-800 mb-2">⚠️ Important Notice:</h4>
+                            <p class="text-yellow-700 text-sm">${result.warning}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-800 mb-3">📋 Removal Steps:</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-blue-700 text-sm">
+                            <li>${result.instructions.step1}</li>
+                            <li>${result.instructions.step2}</li>
+                            <li>${result.instructions.step3}</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>Got It
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
 // Close modal
 function closeModal() {
     const modal = document.querySelector('.fixed.inset-0.bg-black');
@@ -1238,4 +1469,15 @@ function getApiStatusLabel(apiStatus) {
         case 'pending': return '⏳ Pending';
         default: return '❓ Unknown';
     }
+}
+
+// Brand management functions
+function deleteBrand(brandId) {
+    if (confirm(`Are you sure you want to delete the brand "${brandId}"?`)) {
+        deleteIntegration(brandId);
+    }
+}
+
+function toggleBrand(brandId) {
+    toggleIntegration(brandId);
 }

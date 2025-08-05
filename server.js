@@ -775,6 +775,78 @@ app.post('/api/integrations', async (req, res) => {
   }
 });
 
+// Delete/deactivate brand integration
+app.delete('/api/integrations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brand = getBrand(id);
+    
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check if brand has existing leads
+    const leadsCount = await pool.query(
+      'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
+      [id]
+    );
+    
+    const hasLeads = parseInt(leadsCount.rows[0].count) > 0;
+
+    res.json({
+      success: true,
+      message: hasLeads 
+        ? 'Brand removal configuration generated. Note: This brand has existing leads in the database.'
+        : 'Brand removal configuration generated.',
+      brand_id: id,
+      brand_name: brand.name,
+      existing_leads: parseInt(leadsCount.rows[0].count),
+      warning: hasLeads ? 'Removing this brand will not delete existing lead data, but will prevent new leads from being processed.' : null,
+      instructions: {
+        step1: 'Remove the brand configuration from brands-config.js',
+        step2: 'Redeploy your application',
+        step3: hasLeads ? 'Existing leads will remain in database for historical records' : 'Brand will be completely removed'
+      }
+    });
+
+  } catch (error) {
+    console.error('Delete integration error:', error);
+    res.status(500).json({ error: 'Failed to delete integration' });
+  }
+});
+
+// Toggle brand activation status
+app.patch('/api/integrations/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brand = getBrand(id);
+    
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const newStatus = !brand.active;
+
+    res.json({
+      success: true,
+      message: `Brand ${newStatus ? 'activation' : 'deactivation'} configuration generated`,
+      brand_id: id,
+      brand_name: brand.name,
+      current_status: brand.active,
+      new_status: newStatus,
+      instructions: {
+        step1: `Update the 'active' property to ${newStatus} in brands-config.js`,
+        step2: 'Redeploy your application',
+        step3: newStatus ? 'Brand will start accepting new leads' : 'Brand will stop accepting new leads'
+      }
+    });
+
+  } catch (error) {
+    console.error('Toggle integration error:', error);
+    res.status(500).json({ error: 'Failed to toggle integration' });
+  }
+});
+
 // Enhanced leads endpoint with brand filtering
 app.get('/leads', async (req, res) => {
   try {
