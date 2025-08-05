@@ -121,7 +121,7 @@ async function loadLeads() {
         if (leads.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                         <i class="fas fa-inbox mr-2"></i>No leads yet. Use the API Integration tab to test submitting leads.
                     </td>
                 </tr>
@@ -133,26 +133,72 @@ async function loadLeads() {
         
         leads.slice(0, 50).forEach(lead => {
             const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+            
+            // Format phone number with country code
+            const fullPhone = `${lead.phonecc || '+1'} ${lead.phone || 'N/A'}`;
+            
+            // Format dates
+            const registeredDate = lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A';
+            const convertedDate = lead.converted_at ? new Date(lead.converted_at).toLocaleDateString() : 'N/A';
+            
+            // Format tracking info
+            const trackingInfo = [
+                lead.aff_id && `AFF: ${lead.aff_id}`,
+                lead.offer_id && `Offer: ${lead.offer_id}`,
+                lead.aff_sub && `Sub: ${lead.aff_sub}`,
+                lead.aff_sub2 && `Sub2: ${lead.aff_sub2}`,
+                lead.aff_sub4 && `Sub4: ${lead.aff_sub4}`,
+                lead.aff_sub5 && `Sub5: ${lead.aff_sub5}`
+            ].filter(Boolean).join('<br>');
+            
             row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${lead.first_name} ${lead.last_name}</div>
-                    <div class="text-sm text-gray-500">${lead.email}</div>
+                <td class="px-4 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${lead.first_name || ''} ${lead.last_name || ''}</div>
+                    <div class="text-xs text-gray-500">Lead ID: ${lead.id}</div>
+                    ${lead.user_id ? `<div class="text-xs text-gray-500">User ID: ${lead.user_id}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4">
+                    <div class="text-sm text-gray-900">${lead.email || 'N/A'}</div>
+                    <div class="text-sm text-gray-500">${fullPhone}</div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.country || 'N/A'}</div>
+                    ${lead.user_ip ? `<div class="text-xs text-gray-500">IP: ${lead.user_ip}</div>` : ''}
+                </td>
+                <td class="px-4 py-4 text-xs">
+                    <div class="text-gray-700">
+                        ${lead.aff_id ? `<div>AFF ID: ${lead.aff_id}</div>` : ''}
+                        ${lead.offer_id ? `<div>Offer: ${lead.offer_id}</div>` : ''}
+                        ${lead.aff_sub ? `<div>Sub: ${lead.aff_sub}</div>` : ''}
+                        ${lead.aff_sub2 ? `<div>Sub2: ${lead.aff_sub2}</div>` : ''}
+                        ${lead.aff_sub4 ? `<div>Sub4: ${lead.aff_sub4}</div>` : ''}
+                        ${lead.aff_sub5 ? `<div>Sub5: ${lead.aff_sub5}</div>` : ''}
+                    </div>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                         ${lead.brand_name || lead.brand_id || 'Unknown'}
                     </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(lead.status)}">
-                        ${lead.status}
+                        ${getStatusLabel(lead.status)}
                     </span>
+                    ${lead.attempts > 0 ? `<div class="text-xs text-gray-500 mt-1">Attempts: ${lead.attempts}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${new Date(lead.created_at).toLocaleString()}
+                <td class="px-4 py-4 whitespace-nowrap text-xs text-gray-500">
+                    <div><strong>Registered:</strong> ${registeredDate}</div>
+                    ${lead.converted_at ? `<div class="text-green-600"><strong>Converted:</strong> ${convertedDate}</div>` : ''}
+                    ${lead.sent_at ? `<div class="text-blue-600"><strong>Sent:</strong> ${new Date(lead.sent_at).toLocaleDateString()}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900" onclick="viewLead(${lead.id})">View</button>
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 mr-2" onclick="viewLead(${lead.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="text-green-600 hover:text-green-900" onclick="updateLeadStatus(${lead.id}, 'converted')">
+                        <i class="fas fa-check"></i>
+                    </button>
                 </td>
             `;
             tableBody.appendChild(row);
@@ -162,7 +208,7 @@ async function loadLeads() {
         console.error('Leads load error:', error);
         document.getElementById('leads-table').innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-4 text-center text-red-500">
+                <td colspan="8" class="px-6 py-4 text-center text-red-500">
                     <i class="fas fa-exclamation-triangle mr-2"></i>Error loading leads
                 </td>
             </tr>
@@ -266,13 +312,74 @@ function loadApiGuide() {
 
 // Utility functions
 function getStatusColor(status) {
-    switch (status) {
+    switch (status?.toLowerCase()) {
         case 'sent': return 'bg-green-100 text-green-800';
+        case 'converted': return 'bg-emerald-100 text-emerald-800';
+        case 'new': return 'bg-blue-100 text-blue-800';
         case 'queued': return 'bg-yellow-100 text-yellow-800';
+        case 'processing': return 'bg-indigo-100 text-indigo-800';
+        case 'call_again': return 'bg-orange-100 text-orange-800';
+        case 'no_answer': return 'bg-gray-100 text-gray-800';
+        case 'not_interested': return 'bg-red-100 text-red-800';
+        case 'wrong_number': return 'bg-red-100 text-red-800';
+        case 'wrong_info': return 'bg-red-100 text-red-800';
         case 'error': return 'bg-red-100 text-red-800';
-        case 'processing': return 'bg-blue-100 text-blue-800';
         default: return 'bg-gray-100 text-gray-800';
     }
+}
+
+function getStatusLabel(status) {
+    switch (status?.toLowerCase()) {
+        case 'sent': return 'Sent';
+        case 'converted': return 'Converted';
+        case 'new': return 'New';
+        case 'queued': return 'Queued';
+        case 'processing': return 'Processing';
+        case 'call_again': return 'Call Again';
+        case 'no_answer': return 'No Answer';
+        case 'not_interested': return 'Not Interested';
+        case 'wrong_number': return 'Wrong Number';
+        case 'wrong_info': return 'Wrong Info';
+        case 'error': return 'Error';
+        default: return status || 'Unknown';
+    }
+}
+
+// Update lead status function
+async function updateLeadStatus(leadId, newStatus) {
+    try {
+        const response = await fetch(`/api/leads/${leadId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (response.ok) {
+            loadLeads(); // Refresh the leads table
+            showNotification(`Lead ${leadId} status updated to ${getStatusLabel(newStatus)}`, 'success');
+        } else {
+            showNotification('Failed to update lead status', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating lead status:', error);
+        showNotification('Error updating lead status', 'error');
+    }
+}
+
+// Show notification function
+function showNotification(message, type = 'info') {
+    // Simple notification - could be enhanced with a proper notification system
+    const color = type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue';
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded z-50`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        document.body.removeChild(notification);
+    }, 3000);
 }
 
 function refreshLeads() {
@@ -280,22 +387,89 @@ function refreshLeads() {
 }
 
 function viewLead(id) {
-    // Simple implementation - could be enhanced with a modal
     fetch(`/api/leads/${id}`)
         .then(response => response.json())
         .then(lead => {
-            alert(`Lead Details:
-
-ID: ${lead.id}
-Name: ${lead.first_name} ${lead.last_name}
-Email: ${lead.email}
-Phone: ${lead.phone || 'N/A'}
-Country: ${lead.country || 'N/A'}
-Brand: ${lead.brand_name || lead.brand_id || 'Unknown'}
-Status: ${lead.status}
-Created: ${new Date(lead.created_at).toLocaleString()}
-${lead.sent_at ? `Sent: ${new Date(lead.sent_at).toLocaleString()}` : ''}
-${lead.last_error ? `Last Error: ${lead.last_error}` : ''}`);
+            // Create detailed modal
+            const modalContent = `
+                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="lead-modal">
+                    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+                        <div class="mt-3">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Lead Details - ${lead.first_name} ${lead.last_name}</h3>
+                                <button class="text-gray-400 hover:text-gray-600" onclick="document.getElementById('lead-modal').remove()">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">📋 Personal Information</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>Name:</strong> ${lead.first_name} ${lead.last_name}</p>
+                                        <p><strong>Email:</strong> ${lead.email}</p>
+                                        <p><strong>Phone:</strong> ${lead.phonecc} ${lead.phone}</p>
+                                        <p><strong>Country:</strong> ${lead.country}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">🔧 System Information</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>Lead ID:</strong> ${lead.id}</p>
+                                        <p><strong>User ID:</strong> ${lead.user_id || 'N/A'}</p>
+                                        <p><strong>User IP:</strong> ${lead.user_ip || 'N/A'}</p>
+                                        <p><strong>Status:</strong> <span class="px-2 py-1 text-xs rounded-full ${getStatusColor(lead.status)}">${getStatusLabel(lead.status)}</span></p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">📊 Tracking Information</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>AFF ID:</strong> ${lead.aff_id || 'N/A'}</p>
+                                        <p><strong>Offer ID:</strong> ${lead.offer_id || 'N/A'}</p>
+                                        <p><strong>AFF Sub:</strong> ${lead.aff_sub || 'N/A'}</p>
+                                        <p><strong>AFF Sub2:</strong> ${lead.aff_sub2 || 'N/A'}</p>
+                                        <p><strong>AFF Sub4:</strong> ${lead.aff_sub4 || 'N/A'}</p>
+                                        <p><strong>AFF Sub5:</strong> ${lead.aff_sub5 || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">🏢 Brand Information</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>Brand:</strong> ${lead.brand_name || lead.brand_id || 'Unknown'}</p>
+                                        <p><strong>Brand ID:</strong> ${lead.brand_id || 'N/A'}</p>
+                                        <p><strong>Tracker URL:</strong> ${lead.tracker_url || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">📅 Important Dates</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>Date Registered:</strong> ${lead.created_at ? new Date(lead.created_at).toLocaleString() : 'N/A'}</p>
+                                        <p><strong>Date Converted:</strong> ${lead.converted_at ? new Date(lead.converted_at).toLocaleString() : 'Not converted'}</p>
+                                        <p><strong>Date Sent:</strong> ${lead.sent_at ? new Date(lead.sent_at).toLocaleString() : 'Not sent'}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-medium text-gray-900 mb-3">⚠️ Processing Info</h4>
+                                    <div class="space-y-2">
+                                        <p><strong>Attempts:</strong> ${lead.attempts || 0}</p>
+                                        <p><strong>Last Error:</strong> ${lead.last_error || 'None'}</p>
+                                        <p><strong>Referer:</strong> ${lead.referer || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end space-x-2">
+                                <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="updateLeadStatus(${lead.id}, 'converted')">
+                                    Mark as Converted
+                                </button>
+                                <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700" onclick="document.getElementById('lead-modal').remove()">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalContent);
         })
         .catch(error => {
             alert('Failed to load lead details: ' + error.message);

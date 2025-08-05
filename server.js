@@ -26,6 +26,7 @@ async function initializeDatabase() {
         country       CHAR(2)     NOT NULL,
         referer       TEXT,
         user_ip       INET,
+        user_id       VARCHAR(50),
         aff_id        VARCHAR(20) NOT NULL,
         offer_id      VARCHAR(10) NOT NULL,
         brand_id      VARCHAR(50),
@@ -37,10 +38,11 @@ async function initializeDatabase() {
         aff_sub4      TEXT,
         aff_sub5      TEXT,
         orig_offer    TEXT,
-        status        TEXT CHECK (status IN ('queued','sent','error','processing')) DEFAULT 'queued',
+        status        TEXT CHECK (status IN ('queued','sent','error','processing','new','call_again','no_answer','not_interested','converted','wrong_number','wrong_info')) DEFAULT 'new',
         attempts      SMALLINT DEFAULT 0,
         last_error    TEXT,
         sent_at       TIMESTAMPTZ,
+        converted_at  TIMESTAMPTZ,
         created_at    TIMESTAMPTZ DEFAULT NOW()
       );
     `);
@@ -141,6 +143,41 @@ app.get('/api/leads/:id', async (req, res) => {
   } catch (error) {
     console.error('Lead fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch lead' });
+  }
+});
+
+// Update lead status endpoint
+app.patch('/api/leads/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    // Validate status
+    const validStatuses = ['new', 'queued', 'sent', 'error', 'processing', 'call_again', 'no_answer', 'not_interested', 'converted', 'wrong_number', 'wrong_info'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+    
+    // Update the lead status
+    const updateQuery = status === 'converted' 
+      ? 'UPDATE leads SET status = $1, converted_at = NOW() WHERE id = $2 RETURNING *'
+      : 'UPDATE leads SET status = $1 WHERE id = $2 RETURNING *';
+      
+    const result = await pool.query(updateQuery, [status, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    res.json({
+      success: true,
+      lead: result.rows[0],
+      message: `Lead status updated to ${status}`
+    });
+    
+  } catch (error) {
+    console.error('Lead status update error:', error);
+    res.status(500).json({ error: 'Failed to update lead status' });
   }
 });
 
@@ -387,6 +424,7 @@ app.get('/setup-database', async (req, res) => {
         country       CHAR(2)     NOT NULL,
         referer       TEXT,
         user_ip       INET,
+        user_id       VARCHAR(50),
         aff_id        VARCHAR(20) NOT NULL,
         offer_id      VARCHAR(10) NOT NULL,
         brand_id      VARCHAR(50),
@@ -398,10 +436,11 @@ app.get('/setup-database', async (req, res) => {
         aff_sub4      TEXT,
         aff_sub5      TEXT,
         orig_offer    TEXT,
-        status        TEXT CHECK (status IN ('queued','sent','error','processing')) DEFAULT 'queued',
+        status        TEXT CHECK (status IN ('queued','sent','error','processing','new','call_again','no_answer','not_interested','converted','wrong_number','wrong_info')) DEFAULT 'new',
         attempts      SMALLINT DEFAULT 0,
         last_error    TEXT,
         sent_at       TIMESTAMPTZ,
+        converted_at  TIMESTAMPTZ,
         created_at    TIMESTAMPTZ DEFAULT NOW()
       );
     `);
