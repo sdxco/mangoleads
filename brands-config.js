@@ -85,16 +85,20 @@ function getBrand(brandId) {
 
 /**
  * Get all active brands
- * @returns {object} Object with only active brands
+ * @returns {array} Array of active brands with id property
  */
 function getActiveBrands() {
-  const active = {};
-  Object.keys(brands).forEach(key => {
-    if (brands[key].active) {
-      active[key] = brands[key];
-    }
-  });
-  return active;
+  return Object.keys(brands)
+    .filter(key => brands[key].active)
+    .map(key => ({
+      id: key,
+      ...brands[key],
+      apiUrl: brands[key].trackerUrl,
+      affId: brands[key].affId,
+      offerId: brands[key].offerId,
+      required_fields: brands[key].requirements || [],
+      country_restrictions: brands[key].country_restrictions || []
+    }));
 }
 
 /**

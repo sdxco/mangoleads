@@ -122,7 +122,7 @@ async function loadLeads() {
         if (leads.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="17" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="18" class="px-6 py-4 text-center text-gray-500">
                         <i class="fas fa-inbox mr-2"></i>No leads yet. Use the API Integration tab to test submitting leads.
                     </td>
                 </tr>
@@ -197,6 +197,11 @@ async function loadLeads() {
                 <td class="px-3 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(lead.status)}">
                         ${getStatusLabel(lead.status)}
+                    </span>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getApiStatusColor(lead.api_status)}">
+                        ${getApiStatusLabel(lead.api_status)}
                     </span>
                 </td>
                 <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
@@ -1214,4 +1219,23 @@ function showNotification(message, type = 'info') {
             notification.remove();
         }
     }, 5000);
+}
+
+// API Status color and label functions
+function getApiStatusColor(apiStatus) {
+    switch (apiStatus) {
+        case 'sent': return 'bg-green-100 text-green-800';
+        case 'failed': return 'bg-red-100 text-red-800';
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getApiStatusLabel(apiStatus) {
+    switch (apiStatus) {
+        case 'sent': return '✅ Sent';
+        case 'failed': return '❌ Failed';
+        case 'pending': return '⏳ Pending';
+        default: return '❓ Unknown';
+    }
 }

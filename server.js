@@ -16,6 +16,23 @@ function generateUniqueUserId() {
   return `USER_${timestamp}_${randomPart}`.toUpperCase();
 }
 
+// Clean IP address to remove IPv6 prefix
+function cleanIPAddress(ip) {
+  if (!ip) return null;
+  
+  // Remove IPv6 prefix (::ffff:) if present
+  if (ip.includes('::ffff:')) {
+    return ip.replace('::ffff:', '');
+  }
+  
+  // Handle comma-separated IPs (x-forwarded-for)
+  if (ip.includes(',')) {
+    return ip.split(',')[0].trim();
+  }
+  
+  return ip;
+}
+
 // Auto-initialize database on startup
 async function initializeDatabase() {
   try {
@@ -46,6 +63,7 @@ async function initializeDatabase() {
         aff_sub5      TEXT,
         orig_offer    TEXT,
         status        TEXT CHECK (status IN ('queued','sent','error','processing','new','call_again','no_answer','not_interested','converted','wrong_number','wrong_info')) DEFAULT 'new',
+        api_status    TEXT CHECK (api_status IN ('pending','sent','failed')) DEFAULT 'pending',
         attempts      SMALLINT DEFAULT 0,
         last_error    TEXT,
         sent_at       TIMESTAMPTZ,
@@ -61,6 +79,19 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS leads_status_idx ON leads (status);
       CREATE INDEX IF NOT EXISTS leads_created_idx ON leads (created_at DESC);
     `);
+    
+    // Add api_status column if it doesn't exist (migration)
+    try {
+      await pool.query(`
+        ALTER TABLE leads 
+        ADD COLUMN IF NOT EXISTS api_status TEXT 
+        CHECK (api_status IN ('pending','sent','failed')) 
+        DEFAULT 'pending'
+      `);
+      console.log('✅ API status column migration completed');
+    } catch (migrationError) {
+      console.log('ℹ️ API status column already exists or migration skipped');
+    }
     
     // Check if table was created successfully
     const tableCheck = await pool.query(`
@@ -283,7 +314,8 @@ app.post('/api/leads', async (req, res) => {
     }
 
     // Get client IP if not provided
-    const clientIP = user_ip || req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const rawIP = user_ip || req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const clientIP = cleanIPAddress(rawIP);
 
     // Generate unique user ID for this lead
     const uniqueUserId = generateUniqueUserId();
@@ -447,6 +479,7 @@ app.get('/setup-database', async (req, res) => {
         aff_sub5      TEXT,
         orig_offer    TEXT,
         status        TEXT CHECK (status IN ('queued','sent','error','processing','new','call_again','no_answer','not_interested','converted','wrong_number','wrong_info')) DEFAULT 'new',
+        api_status    TEXT CHECK (api_status IN ('pending','sent','failed')) DEFAULT 'pending',
         attempts      SMALLINT DEFAULT 0,
         last_error    TEXT,
         sent_at       TIMESTAMPTZ,
@@ -537,7 +570,8 @@ app.post('/submit-lead', async (req, res) => {
       return res.status(400).json({ error: 'Invalid field format' });
     }
 
-    const user_ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    const rawIP = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    const user_ip = cleanIPAddress(rawIP);
 
     // Generate unique user ID for this lead
     const uniqueUserId = generateUniqueUserId();
@@ -820,8 +854,8 @@ app.get('/brands/stats', async (req, res) => {
       if (brand.type === 'mock') {
         console.log(`📝 Mock brand ${lead.brand_id} - Lead ${lead.id} stored locally only`);
         await pool.query(
-          'UPDATE leads SET status=$1, sent_at=$2 WHERE id=$3', 
-          ['sent', new Date(), lead.id]
+          'UPDATE leads SET status=$1, api_status=$2, sent_at=$3 WHERE id=$4', 
+          ['new', 'sent', new Date(), lead.id]
         );
         return;
       }
@@ -889,9 +923,9 @@ app.get('/brands/stats', async (req, res) => {
         });
       }
       
-      // Update lead as successfully sent
+      // Update lead as successfully sent to API
       await pool.query(
-        'UPDATE leads SET status=$1, sent_at=$2 WHERE id=$3', 
+        'UPDATE leads SET api_status=$1, sent_at=$2 WHERE id=$3', 
         ['sent', new Date(), lead.id]
       );
       
@@ -904,8 +938,8 @@ app.get('/brands/stats', async (req, res) => {
       const maxAttempts = 3;
       
       await pool.query(
-        'UPDATE leads SET status=$1, attempts=$2, last_error=$3 WHERE id=$4',
-        [attempts >= maxAttempts ? 'error' : 'queued', attempts, err.message, lead.id]
+        'UPDATE leads SET api_status=$1, attempts=$2, last_error=$3 WHERE id=$4',
+        [attempts >= maxAttempts ? 'failed' : 'pending', attempts, err.message, lead.id]
       );
       
       // Retry with exponential backoff if under max attempts
