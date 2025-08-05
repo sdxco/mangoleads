@@ -121,7 +121,7 @@ async function loadLeads() {
         if (leads.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="17" class="px-6 py-4 text-center text-gray-500">
                         <i class="fas fa-inbox mr-2"></i>No leads yet. Use the API Integration tab to test submitting leads.
                     </td>
                 </tr>
@@ -153,50 +153,62 @@ async function loadLeads() {
             ].filter(Boolean).join('<br>');
             
             row.innerHTML = `
-                <td class="px-4 py-4 whitespace-nowrap">
+                <td class="px-3 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">${lead.first_name || ''} ${lead.last_name || ''}</div>
-                    <div class="text-xs text-gray-500">Lead ID: ${lead.id}</div>
-                    ${lead.user_id ? `<div class="text-xs text-gray-500">User ID: ${lead.user_id}</div>` : ''}
+                    <div class="text-xs text-gray-500">ID: ${lead.id}</div>
                 </td>
-                <td class="px-4 py-4">
+                <td class="px-3 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">${lead.email || 'N/A'}</div>
-                    <div class="text-sm text-gray-500">${fullPhone}</div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap">
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.phonecc || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.phone || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">${lead.country || 'N/A'}</div>
-                    ${lead.user_ip ? `<div class="text-xs text-gray-500">IP: ${lead.user_ip}</div>` : ''}
                 </td>
-                <td class="px-4 py-4 text-xs">
-                    <div class="text-gray-700">
-                        ${lead.aff_id ? `<div>AFF ID: ${lead.aff_id}</div>` : ''}
-                        ${lead.offer_id ? `<div>Offer: ${lead.offer_id}</div>` : ''}
-                        ${lead.aff_sub ? `<div>Sub: ${lead.aff_sub}</div>` : ''}
-                        ${lead.aff_sub2 ? `<div>Sub2: ${lead.aff_sub2}</div>` : ''}
-                        ${lead.aff_sub4 ? `<div>Sub4: ${lead.aff_sub4}</div>` : ''}
-                        ${lead.aff_sub5 ? `<div>Sub5: ${lead.aff_sub5}</div>` : ''}
-                    </div>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.user_id || 'N/A'}</div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        ${lead.brand_name || lead.brand_id || 'Unknown'}
-                    </span>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.user_ip || 'N/A'}</div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap">
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.aff_id || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.offer_id || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.aff_sub || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.aff_sub2 || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.aff_sub4 || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${lead.aff_sub5 || 'N/A'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(lead.status)}">
                         ${getStatusLabel(lead.status)}
                     </span>
-                    ${lead.attempts > 0 ? `<div class="text-xs text-gray-500 mt-1">Attempts: ${lead.attempts}</div>` : ''}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-xs text-gray-500">
-                    <div><strong>Registered:</strong> ${registeredDate}</div>
-                    ${lead.converted_at ? `<div class="text-green-600"><strong>Converted:</strong> ${convertedDate}</div>` : ''}
-                    ${lead.sent_at ? `<div class="text-blue-600"><strong>Sent:</strong> ${new Date(lead.sent_at).toLocaleDateString()}</div>` : ''}
+                <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
+                    <div>${registeredDate}</div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900 mr-2" onclick="viewLead(${lead.id})">
+                <td class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
+                    <div>${lead.converted_at ? convertedDate : 'Not converted'}</div>
+                </td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 mr-2" onclick="viewLead(${lead.id})" title="View Details">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="text-green-600 hover:text-green-900" onclick="updateLeadStatus(${lead.id}, 'converted')">
+                    <button class="text-green-600 hover:text-green-900" onclick="updateLeadStatus(${lead.id}, 'converted')" title="Mark as Converted">
                         <i class="fas fa-check"></i>
                     </button>
                 </td>
@@ -208,7 +220,7 @@ async function loadLeads() {
         console.error('Leads load error:', error);
         document.getElementById('leads-table').innerHTML = `
             <tr>
-                <td colspan="8" class="px-6 py-4 text-center text-red-500">
+                <td colspan="17" class="px-6 py-4 text-center text-red-500">
                     <i class="fas fa-exclamation-triangle mr-2"></i>Error loading leads
                 </td>
             </tr>
