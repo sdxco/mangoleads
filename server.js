@@ -785,13 +785,21 @@ app.delete('/api/integrations/:id', async (req, res) => {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    // Check if brand has existing leads
-    const leadsCount = await pool.query(
-      'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
-      [id]
-    );
-    
-    const hasLeads = parseInt(leadsCount.rows[0].count) > 0;
+    let hasLeads = false;
+    let leadCount = 0;
+
+    // Check if brand has existing leads (only if database is available)
+    try {
+      const leadsCount = await pool.query(
+        'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
+        [id]
+      );
+      leadCount = parseInt(leadsCount.rows[0].count);
+      hasLeads = leadCount > 0;
+    } catch (dbError) {
+      console.log('Database not available for lead count check, proceeding without lead validation');
+      // Continue without database check
+    }
 
     res.json({
       success: true,
@@ -800,7 +808,7 @@ app.delete('/api/integrations/:id', async (req, res) => {
         : 'Brand removal configuration generated.',
       brand_id: id,
       brand_name: brand.name,
-      existing_leads: parseInt(leadsCount.rows[0].count),
+      existing_leads: leadCount,
       warning: hasLeads ? 'Removing this brand will not delete existing lead data, but will prevent new leads from being processed.' : null,
       instructions: {
         step1: 'Remove the brand configuration from brands-config.js',
