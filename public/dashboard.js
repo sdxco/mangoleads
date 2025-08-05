@@ -282,7 +282,7 @@ async function loadBrands() {
                         <i class="fas ${brand.active ? 'fa-pause' : 'fa-play'} mr-1"></i>
                         ${brand.active ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button onclick="deleteBrand('${brand.id}')" 
+                    <button onclick="deleteBrand('${brand.id}', this)" 
                             class="px-3 py-2 text-sm font-medium bg-red-100 text-red-800 hover:bg-red-200 rounded">
                         <i class="fas fa-trash mr-1"></i>Delete
                     </button>
@@ -831,7 +831,7 @@ function loadIntegrations() {
                                             class="bg-${integration.active ? 'orange' : 'green'}-600 hover:bg-${integration.active ? 'orange' : 'green'}-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
                                         <i class="fas fa-${integration.active ? 'pause' : 'play'} mr-1"></i>${integration.active ? 'Disable' : 'Enable'}
                                     </button>
-                                    <button onclick="deleteIntegration('${integration.id}')" 
+                                    <button onclick="deleteIntegration('${integration.id}', this)" 
                                             class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
                                         <i class="fas fa-trash mr-1"></i>Remove
                                     </button>
@@ -1224,12 +1224,12 @@ function toggleIntegration(integrationId, currentStatus) {
 }
 
 // Delete integration
-function deleteIntegration(integrationId) {
+function deleteIntegration(integrationId, buttonElement) {
     if (!confirm('Are you sure you want to remove this integration?\n\nThis will generate instructions to remove it from your configuration.')) {
         return;
     }
 
-    const button = event.target.closest('button');
+    const button = buttonElement;
     const originalContent = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Removing...';
@@ -1246,6 +1246,7 @@ function deleteIntegration(integrationId) {
             if (result.success) {
                 showDeleteResults(result);
                 loadIntegrations(); // Refresh the list
+                loadBrands(); // Also refresh brands list
             } else {
                 showNotification('Error: ' + result.error, 'error');
             }
@@ -1472,9 +1473,9 @@ function getApiStatusLabel(apiStatus) {
 }
 
 // Brand management functions
-function deleteBrand(brandId) {
+function deleteBrand(brandId, buttonElement) {
     if (confirm(`Are you sure you want to delete the brand "${brandId}"?`)) {
-        deleteIntegration(brandId);
+        deleteIntegration(brandId, buttonElement);
     }
 }
 
