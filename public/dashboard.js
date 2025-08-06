@@ -275,16 +275,12 @@ async function loadBrands() {
                     }
                 </div>
                 <div class="flex gap-2 mt-4 pt-4 border-t">
-                    <button onclick="toggleBrand('${brand.id}')" 
-                            class="flex-1 px-3 py-2 text-sm font-medium rounded ${brand.active 
-                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
-                                : 'bg-green-100 text-green-800 hover:bg-green-200'}">
-                        <i class="fas ${brand.active ? 'fa-pause' : 'fa-play'} mr-1"></i>
-                        ${brand.active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button onclick="deleteBrand('${brand.id}', this)" 
-                            class="px-3 py-2 text-sm font-medium bg-red-100 text-red-800 hover:bg-red-200 rounded">
-                        <i class="fas fa-trash mr-1"></i>Delete
+                    <button onclick="toggleBrand('${brand.id}', this)" 
+                            class="w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors ${brand.active 
+                                ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                                : 'bg-green-500 text-white hover:bg-green-600'}">
+                        <i class="fas ${brand.active ? 'fa-pause' : 'fa-play'} mr-2"></i>
+                        ${brand.active ? 'Deactivate Brand' : 'Activate Brand'}
                     </button>
                 </div>
             `;
@@ -819,13 +815,9 @@ function loadIntegrations() {
                                     </p>
                                 </div>
                                 <div class="flex space-x-2 ml-4">
-                                    <button onclick="testIntegration('${integration.id}')" 
+                                    <button onclick="testLead('${integration.id}')" 
                                             class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
-                                        <i class="fas fa-flask mr-1"></i>Test
-                                    </button>
-                                    <button onclick="viewIntegrationDetails('${integration.id}')" 
-                                            class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
-                                        <i class="fas fa-eye mr-1"></i>View
+                                        <i class="fas fa-paper-plane mr-1"></i>Test Lead
                                     </button>
                                     <button onclick="toggleIntegration('${integration.id}', ${integration.active})" 
                                             class="bg-${integration.active ? 'orange' : 'green'}-600 hover:bg-${integration.active ? 'orange' : 'green'}-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
@@ -885,29 +877,115 @@ function loadIntegrations() {
         });
 }
 
-// Test integration
-function testIntegration(integrationId) {
+// Test lead submission
+function testLead(integrationId) {
     const button = event.target.closest('button');
     const originalContent = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Testing...';
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sending Test Lead...';
 
-    fetch(`/api/integrations/${integrationId}/test`, {
+    // Generate test lead data
+    const testLeadData = {
+        brand_id: integrationId,
+        first_name: 'John',
+        last_name: 'TestUser',
+        email: `test.${Date.now()}@mangoleads-test.com`,
+        phonecc: '+1',
+        phone: '5551234567',
+        country: 'US',
+        aff_id: '12345',
+        offer_id: '1000',
+        user_ip: '192.168.1.100',
+        aff_sub: 'test-campaign',
+        referer: 'https://mangoleads-test.com'
+    };
+
+    fetch('/api/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testLeadData)
     })
         .then(response => response.json())
         .then(result => {
             button.disabled = false;
             button.innerHTML = originalContent;
-            showTestResults(result);
+            
+            if (result.leadId) {
+                showTestLeadResults({
+                    success: true,
+                    leadId: result.leadId,
+                    brand_id: integrationId,
+                    brand_name: result.brand,
+                    status: result.status,
+                    testData: testLeadData
+                });
+            } else {
+                showNotification('Test lead failed: ' + (result.error || 'Unknown error'), 'error');
+            }
         })
         .catch(error => {
             button.disabled = false;
             button.innerHTML = originalContent;
-            console.error('Test error:', error);
-            showNotification('Test failed: ' + error.message, 'error');
+            console.error('Test lead error:', error);
+            showNotification('Test lead failed: ' + error.message, 'error');
         });
+}
+
+// Show test lead results modal
+function showTestLeadResults(result) {
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+            <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-green-600">
+                        <i class="fas fa-paper-plane mr-2"></i>Test Lead Sent Successfully
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="font-medium text-green-800 mb-2">✅ Lead Submitted Successfully</h4>
+                        <p class="text-green-700 text-sm">
+                            A test lead has been created and sent to your brand integration for processing.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Test Lead Details:</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div><span class="font-medium">Lead ID:</span> ${result.leadId}</div>
+                            <div><span class="font-medium">Brand:</span> ${escapeHtml(result.brand_name)}</div>
+                            <div><span class="font-medium">Status:</span> <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">${result.status}</span></div>
+                            <div><span class="font-medium">Email:</span> ${result.testData.email}</div>
+                            <div><span class="font-medium">Name:</span> ${result.testData.first_name} ${result.testData.last_name}</div>
+                            <div><span class="font-medium">Phone:</span> ${result.testData.phonecc} ${result.testData.phone}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-800 mb-2">🎯 What Happened:</h4>
+                        <ul class="list-disc list-inside space-y-1 text-blue-700 text-sm">
+                            <li>Test lead was created in your database</li>
+                            <li>Lead was queued for processing to your brand API</li>
+                            <li>You can check the lead status in the Leads tab</li>
+                            <li>Monitor API response to verify integration is working</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button onclick="closeModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>Great!
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 // Show test results modal
@@ -1483,6 +1561,55 @@ function deleteBrand(brandId, buttonElement) {
     }
 }
 
-function toggleBrand(brandId) {
-    toggleIntegration(brandId);
+function toggleBrand(brandId, buttonElement) {
+    // Update button state immediately for better UX
+    const isCurrentlyActive = buttonElement.textContent.includes('Deactivate');
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+    
+    fetch(`/api/brands/${brandId}/toggle`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Update button based on new status
+            const newStatus = result.newStatus;
+            if (newStatus === 'active') {
+                buttonElement.innerHTML = '<i class="fas fa-ban mr-2"></i>Deactivate';
+                buttonElement.className = 'w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors';
+            } else {
+                buttonElement.innerHTML = '<i class="fas fa-check mr-2"></i>Activate';
+                buttonElement.className = 'w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors';
+            }
+            buttonElement.disabled = false;
+        } else {
+            // Revert button state on error
+            if (isCurrentlyActive) {
+                buttonElement.innerHTML = '<i class="fas fa-ban mr-2"></i>Deactivate';
+                buttonElement.className = 'w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors';
+            } else {
+                buttonElement.innerHTML = '<i class="fas fa-check mr-2"></i>Activate';
+                buttonElement.className = 'w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors';
+            }
+            buttonElement.disabled = false;
+            alert('Error toggling brand status: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Revert button state on error
+        if (isCurrentlyActive) {
+            buttonElement.innerHTML = '<i class="fas fa-ban mr-2"></i>Deactivate';
+            buttonElement.className = 'w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors';
+        } else {
+            buttonElement.innerHTML = '<i class="fas fa-check mr-2"></i>Activate';
+            buttonElement.className = 'w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors';
+        }
+        buttonElement.disabled = false;
+        alert('Error toggling brand status');
+    });
 }

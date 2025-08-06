@@ -866,6 +866,129 @@ app.patch('/api/integrations/:id/toggle', async (req, res) => {
   }
 });
 
+// Test lead submission endpoint
+app.post('/api/test-lead', async (req, res) => {
+  try {
+    const { brandId } = req.body;
+    
+    if (!brandId) {
+      return res.status(400).json({ error: 'Brand ID is required' });
+    }
+
+    const brand = getBrand(brandId);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    if (!brand.active) {
+      return res.status(400).json({ error: 'Brand is currently inactive' });
+    }
+
+    // Generate test lead data
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+    const testData = {
+      email: `test.lead.${timestamp}@mangoleads.com`,
+      firstName: 'John',
+      lastName: 'TestUser',
+      phonecc: '+1',
+      phone: '5551234567',
+      ip: '192.168.1.100',
+      country: 'United States',
+      fname: 'John',
+      lname: 'TestUser',
+      first_name: 'John',
+      last_name: 'TestUser'
+    };
+
+    // Generate unique lead ID
+    const leadId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Insert test lead into database
+    const insertQuery = `
+      INSERT INTO leads (
+        lead_id, brand_id, brand_name, email, first_name, last_name, 
+        phone, phonecc, ip, country, call_status, api_status, 
+        created_at, sent_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()
+      ) RETURNING id
+    `;
+
+    const insertResult = await db.query(insertQuery, [
+      leadId,
+      brandId,
+      brand.name,
+      testData.email,
+      testData.firstName,
+      testData.lastName,
+      testData.phone,
+      testData.phonecc,
+      testData.ip,
+      testData.country,
+      'pending',
+      'pending'
+    ]);
+
+    // Queue the lead for processing (simulate real lead flow)
+    if (brand.webhook_url || brand.api_endpoint) {
+      // Add to processing queue
+      await queue.add('send', {
+        ...testData,
+        brand_id: brandId,
+        brand_name: brand.name,
+        lead_id: leadId,
+        source: 'test_lead'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Test lead created and queued successfully',
+      leadId: leadId,
+      brand_name: brand.name,
+      status: 'queued_for_processing',
+      testData: testData
+    });
+
+  } catch (error) {
+    console.error('Test lead error:', error);
+    res.status(500).json({ error: 'Failed to create test lead' });
+  }
+});
+
+// Alias endpoint for brand toggle (same as integration toggle)
+app.patch('/api/brands/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brand = getBrand(id);
+    
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Toggle the status in memory (for runtime changes)
+    const newStatus = brand.active ? 'inactive' : 'active';
+    
+    // Update in-memory brand status
+    brandsConfig.brands[id] = {
+      ...brand,
+      active: newStatus === 'active'
+    };
+
+    res.json({
+      success: true,
+      message: `Brand ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+      brand_id: id,
+      brand_name: brand.name,
+      newStatus: newStatus
+    });
+
+  } catch (error) {
+    console.error('Toggle brand error:', error);
+    res.status(500).json({ error: 'Failed to toggle brand status' });
+  }
+});
+
 // Enhanced leads endpoint with brand filtering
 app.get('/leads', async (req, res) => {
   try {
