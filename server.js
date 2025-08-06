@@ -7,9 +7,26 @@ const axios = require('axios');
 const validator = require('validator');
 const pool = require('./db');
 const queue = require('./queue');
-const { getBrand, getActiveBrands, validateLeadData } = require('./brands-config');
+const { getBrand, getActiveBrands, validateLeadData, brands } = require('./brands-config');
 
-// Generate unique user ID for each client
+// Runtime brand status overrides
+const brandStatusOverrides = {};
+
+// Enhanced getBrand function that considers runtime overrides
+function getBrandWithOverrides(brandId) {
+  const brand = getBrand(brandId);
+  if (!brand) return null;
+  
+  // Apply runtime status override if exists
+  if (brandStatusOverrides[brandId] !== undefined) {
+    return {
+      ...brand,
+      active: brandStatusOverrides[brandId]
+    };
+  }
+  
+  return brand;
+}
 function generateUniqueUserId() {
   const timestamp = Date.now().toString(36); // Base36 timestamp
   const randomPart = Math.random().toString(36).substring(2, 8); // Random string
@@ -240,6 +257,27 @@ app.get('/brands', (req, res) => {
     country_restrictions: brand.country_restrictions || []
   }));
   res.json(brands);
+});
+
+// Get all brands (including inactive) for management purposes
+app.get('/api/brands/all', (req, res) => {
+  try {
+    const allBrands = Object.keys(brands).map(key => {
+      const brand = getBrandWithOverrides(key);
+      return {
+        id: key,
+        name: brand.name,
+        active: brand.active,
+        api_url: brand.trackerUrl,
+        required_fields: brand.requirements || [],
+        country_restrictions: brand.country_restrictions || []
+      };
+    });
+    res.json(allBrands);
+  } catch (error) {
+    console.error('Error fetching all brands:', error);
+    res.status(500).json({ error: 'Failed to fetch brands' });
+  }
 });
 
 app.get('/analytics', async (req, res) => {
@@ -966,14 +1004,12 @@ app.patch('/api/brands/:id/toggle', async (req, res) => {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    // Toggle the status in memory (for runtime changes)
-    const newStatus = brand.active ? 'inactive' : 'active';
+    // Get current status (considering any existing overrides)
+    const currentBrand = getBrandWithOverrides(id);
+    const newStatus = currentBrand.active ? 'inactive' : 'active';
     
-    // Update in-memory brand status
-    brandsConfig.brands[id] = {
-      ...brand,
-      active: newStatus === 'active'
-    };
+    // Set runtime override
+    brandStatusOverrides[id] = newStatus === 'active';
 
     res.json({
       success: true,

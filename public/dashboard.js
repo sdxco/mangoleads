@@ -237,7 +237,7 @@ async function loadLeads() {
 // Load brands
 async function loadBrands() {
     try {
-        const response = await fetch('/brands');
+        const response = await fetch('/api/brands/all');
         if (!response.ok) throw new Error('Failed to fetch brands');
         
         const brandsData = await response.json();
@@ -276,11 +276,11 @@ async function loadBrands() {
                 </div>
                 <div class="flex gap-2 mt-4 pt-4 border-t">
                     <button onclick="toggleBrand('${brand.id}', this)" 
-                            class="w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors ${brand.active 
-                                ? 'bg-orange-500 text-white hover:bg-orange-600' 
-                                : 'bg-green-500 text-white hover:bg-green-600'}">
-                        <i class="fas ${brand.active ? 'fa-pause' : 'fa-play'} mr-2"></i>
-                        ${brand.active ? 'Deactivate Brand' : 'Activate Brand'}
+                            class="w-full px-4 py-2 ${brand.active 
+                                ? 'bg-orange-500 hover:bg-orange-600' 
+                                : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg font-medium transition-colors">
+                        <i class="fas ${brand.active ? 'fa-ban' : 'fa-check'} mr-2"></i>
+                        ${brand.active ? 'Deactivate' : 'Activate'}
                     </button>
                 </div>
             `;
