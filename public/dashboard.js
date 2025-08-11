@@ -808,6 +808,10 @@ function loadIntegrations() {
                                         <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                                             ID: ${integration.id}
                                         </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full ${integration.source === 'dynamic' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+                                            <i class="fas fa-${integration.source === 'dynamic' ? 'cloud' : 'code'} text-xs mr-1"></i>
+                                            ${integration.source === 'dynamic' ? 'Live' : 'Static'}
+                                        </span>
                                     </div>
                                     <p class="text-sm text-gray-600 mb-3">
                                         <i class="fas fa-link mr-1"></i>
@@ -819,14 +823,17 @@ function loadIntegrations() {
                                             class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
                                         <i class="fas fa-paper-plane mr-1"></i>Test Lead
                                     </button>
-                                    <button onclick="toggleIntegration('${integration.id}', ${integration.active})" 
-                                            class="bg-${integration.active ? 'orange' : 'green'}-600 hover:bg-${integration.active ? 'orange' : 'green'}-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
-                                        <i class="fas fa-${integration.active ? 'pause' : 'play'} mr-1"></i>${integration.active ? 'Disable' : 'Enable'}
-                                    </button>
-                                    <button onclick="deleteIntegration('${integration.id}', this)" 
-                                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
-                                        <i class="fas fa-trash mr-1"></i>Remove
-                                    </button>
+                                    ${integration.removable ? `
+                                        <button onclick="deleteIntegration('${integration.id}', this)" 
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                            <i class="fas fa-trash mr-1"></i>Remove
+                                        </button>
+                                    ` : `
+                                        <button onclick="toggleIntegration('${integration.id}', ${integration.active})" 
+                                                class="bg-${integration.active ? 'orange' : 'green'}-600 hover:bg-${integration.active ? 'orange' : 'green'}-700 text-white px-3 py-2 rounded text-sm font-medium flex items-center">
+                                            <i class="fas fa-${integration.active ? 'pause' : 'play'} mr-1"></i>${integration.active ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                    `}
                                 </div>
                             </div>
                             
@@ -1414,26 +1421,27 @@ function showToggleResults(result) {
 
 // Show delete results modal
 function showDeleteResults(result) {
+    const isRemoved = result.action === 'removed';
     const modalHtml = `
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
             <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-semibold text-green-600">
-                        <i class="fas fa-check-circle mr-2"></i>Brand Deactivated
+                    <h3 class="text-xl font-semibold ${isRemoved ? 'text-red-600' : 'text-orange-600'}">
+                        <i class="fas fa-${isRemoved ? 'trash' : 'ban'} mr-2"></i>Brand ${isRemoved ? 'Removed' : 'Deactivated'}
                     </h3>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 
-                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                    <h4 class="font-medium text-green-800 mb-2">
-                        ✅ Brand Deactivated Successfully
+                <div class="bg-${isRemoved ? 'red' : 'orange'}-50 border border-${isRemoved ? 'red' : 'orange'}-200 rounded-lg p-4 mb-6">
+                    <h4 class="font-medium text-${isRemoved ? 'red' : 'orange'}-800 mb-2">
+                        ${isRemoved ? '🗑️ Brand Completely Removed' : '⏸️ Brand Deactivated'}
                     </h4>
-                    <p class="text-green-700 text-sm">
+                    <p class="text-${isRemoved ? 'red' : 'orange'}-700 text-sm">
                         ${result.message}
                     </p>
-                    ${result.note ? `<p class="text-green-600 text-xs mt-2">${result.note}</p>` : ''}
+                    ${result.note ? `<p class="text-${isRemoved ? 'red' : 'orange'}-600 text-xs mt-2">${result.note}</p>` : ''}
                 </div>
                 
                 <div class="space-y-4">
@@ -1447,11 +1455,13 @@ function showDeleteResults(result) {
                                 <span class="font-medium">Brand Name:</span> ${escapeHtml(result.brand_name)}
                             </div>
                             <div>
-                                <span class="font-medium">Existing Leads:</span> ${result.existing_leads}
+                                <span class="font-medium">Existing Leads:</span> ${result.existing_leads || 0}
                             </div>
                             <div>
                                 <span class="font-medium">Status:</span> 
-                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Deactivated</span>
+                                <span class="px-2 py-1 text-xs rounded-full bg-${isRemoved ? 'gray' : 'red'}-100 text-${isRemoved ? 'gray' : 'red'}-800">
+                                    ${isRemoved ? 'Removed' : 'Deactivated'}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1459,10 +1469,17 @@ function showDeleteResults(result) {
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <h4 class="font-medium text-blue-800 mb-3">🎯 What Happened:</h4>
                         <ul class="list-disc list-inside space-y-1 text-blue-700 text-sm">
-                            <li>Brand has been deactivated immediately</li>
-                            <li>No new leads will be accepted for this brand</li>
-                            <li>Existing leads are preserved in the database</li>
-                            <li>You can reactivate the brand anytime using the toggle button</li>
+                            ${isRemoved ? `
+                                <li>Brand integration has been completely removed from the system</li>
+                                <li>No new leads will be accepted for this brand</li>
+                                <li>Brand configuration is permanently deleted</li>
+                                <li>Existing leads remain in database for historical records</li>
+                            ` : `
+                                <li>Static brand has been deactivated immediately</li>
+                                <li>No new leads will be accepted for this brand</li>
+                                <li>Existing leads are preserved in the database</li>
+                                <li>You can reactivate the brand anytime using the toggle button</li>
+                            `}
                         </ul>
                     </div>
                 </div>

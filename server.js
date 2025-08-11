@@ -12,8 +12,57 @@ const { getBrand, getActiveBrands, validateLeadData, brands } = require('./brand
 // Runtime brand status overrides
 const brandStatusOverrides = {};
 
-// Enhanced getBrand function that considers runtime overrides
+// Dynamic brand storage system
+const dynamicBrands = new Map();
+let nextBrandId = 5000; // Start dynamic IDs from 5000
+
+// Enhanced function to get all integrations (static + dynamic)
+function getAllIntegrations() {
+  // Get static brands from brands-config.js
+  const staticBrands = Object.keys(brands).map(key => {
+    const brand = getBrand(key);
+    return {
+      id: key,
+      name: brand.name,
+      active: brandStatusOverrides[key] !== undefined ? brandStatusOverrides[key] : brand.active,
+      type: brand.type || 'static',
+      apiUrl: brand.trackerUrl,
+      trackerUrl: brand.trackerUrl,
+      affId: brand.affId,
+      offerId: brand.offerId,
+      token: brand.token || null,
+      method: brand.method || 'POST',
+      format: brand.format || 'json',
+      requirements: brand.requirements || [],
+      country_restrictions: brand.country_restrictions || [],
+      source: 'static',
+      removable: false
+    };
+  });
+  
+  // Get dynamic brands
+  const dynamicBrandsArray = Array.from(dynamicBrands.values()).map(brand => ({
+    ...brand,
+    active: brandStatusOverrides[brand.id] !== undefined ? brandStatusOverrides[brand.id] : brand.active,
+    source: 'dynamic',
+    removable: true
+  }));
+  
+  return [...staticBrands, ...dynamicBrandsArray];
+}
+
+// Enhanced getBrand function that considers runtime overrides and dynamic brands
 function getBrandWithOverrides(brandId) {
+  // Check dynamic brands first
+  if (dynamicBrands.has(brandId)) {
+    const brand = dynamicBrands.get(brandId);
+    return {
+      ...brand,
+      active: brandStatusOverrides[brandId] !== undefined ? brandStatusOverrides[brandId] : brand.active
+    };
+  }
+  
+  // Check static brands
   const brand = getBrand(brandId);
   if (!brand) return null;
   
@@ -586,19 +635,29 @@ app.post('/submit-lead', async (req, res) => {
       return res.status(400).json({ error: 'brand_id is required' });
     }
 
-    // Get brand configuration
-    const brand = getBrand(brand_id);
+    // Get brand configuration (static or dynamic)
+    let brand = getBrand(brand_id);
+    if (!brand) {
+      brand = dynamicBrands.get(brand_id);
+    }
+    
     if (!brand) {
       return res.status(400).json({ error: 'Invalid brand_id' });
     }
 
-    if (!brand.active) {
+    // Check if brand is active (considering overrides)
+    const isActive = brandStatusOverrides[brand_id] !== undefined ? brandStatusOverrides[brand_id] : brand.active;
+    if (!isActive) {
       return res.status(400).json({ error: 'Brand is currently inactive' });
     }
 
     // Validate required fields for this brand
     const leadData = { first_name, last_name, email, phonecc, phone, country, age };
-    const missingFields = validateLeadData(leadData, brand);
+    const requiredFields = brand.requirements || brand.required_fields || ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'];
+    const missingFields = requiredFields.filter(field => {
+      const value = leadData[field];
+      return !value || (typeof value === 'string' && value.trim().length === 0);
+    });
     
     if (missingFields.length > 0) {
       return res.status(400).json({ 
@@ -654,24 +713,32 @@ app.post('/submit-lead', async (req, res) => {
 
 // API Integration Management Endpoints
 
-// Get all brand integrations
+// Get all brand integrations - now supports dynamic brands
 app.get('/api/integrations', (req, res) => {
-  const brands = getActiveBrands().map(brand => ({
-    id: brand.id,
-    name: brand.name,
-    active: brand.active,
-    type: brand.type,
-    api_url: brand.apiUrl,
-    tracker_url: brand.trackerUrl,
-    aff_id: brand.affId,
-    offer_id: brand.offerId,
-    required_fields: brand.required_fields,
-    country_restrictions: brand.country_restrictions || [],
-    has_token: !!brand.token,
-    method: brand.method || 'POST',
-    format: brand.format || 'json'
-  }));
-  res.json(brands);
+  try {
+    const allIntegrations = getAllIntegrations().map(brand => ({
+      id: brand.id,
+      name: brand.name,
+      active: brand.active,
+      type: brand.type,
+      api_url: brand.apiUrl,
+      tracker_url: brand.trackerUrl,
+      aff_id: brand.affId,
+      offer_id: brand.offerId,
+      required_fields: brand.requirements || brand.required_fields || [],
+      country_restrictions: brand.country_restrictions || [],
+      has_token: !!brand.token,
+      method: brand.method || 'POST',
+      format: brand.format || 'json',
+      source: brand.source,
+      removable: brand.removable
+    }));
+    
+    res.json(allIntegrations);
+  } catch (error) {
+    console.error('Error loading integrations:', error);
+    res.status(500).json({ error: 'Failed to load integrations' });
+  }
 });
 
 // Test an API integration
@@ -763,7 +830,7 @@ app.post('/api/integrations/:id/test', async (req, res) => {
   }
 });
 
-// Add new brand integration (generates configuration)
+// Add new brand integration - now actually adds working brands
 app.post('/api/integrations', async (req, res) => {
   try {
     const {
@@ -786,8 +853,8 @@ app.post('/api/integrations', async (req, res) => {
       });
     }
 
-    // Generate new brand ID
-    const newId = offer_id; // Use offer_id as brand ID
+    // Generate new brand ID for dynamic brands
+    const newId = (nextBrandId++).toString();
 
     // Create new brand configuration
     const newBrand = {
@@ -802,20 +869,21 @@ app.post('/api/integrations', async (req, res) => {
       token: token || null,
       method: method || 'POST',
       format: 'json',
-      required_fields: required_fields || ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
-      country_restrictions: country_restrictions || []
+      requirements: required_fields || ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
+      country_restrictions: country_restrictions || [],
+      source: 'dynamic',
+      removable: true
     };
+
+    // Store in dynamic brands (memory storage)
+    dynamicBrands.set(newId, newBrand);
 
     res.status(201).json({
       success: true,
-      message: 'Brand integration configuration generated successfully',
+      message: 'Brand integration added successfully and is now live!',
       brand: newBrand,
-      instructions: {
-        step1: 'Copy the brand configuration below',
-        step2: 'Add it to your brands-config.js file in the brands array',
-        step3: 'Redeploy your application',
-        step4: 'The integration will be active and ready to receive leads'
-      }
+      status: 'active',
+      notice: 'This brand is now ready to receive leads immediately'
     });
 
   } catch (error) {
@@ -824,48 +892,79 @@ app.post('/api/integrations', async (req, res) => {
   }
 });
 
-// Delete/deactivate brand integration
+// Delete/remove brand integration - now actually removes dynamic brands
 app.delete('/api/integrations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const brand = getBrand(id);
     
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    let hasLeads = false;
-    let leadCount = 0;
-
-    // Check if brand has existing leads (only if database is available)
-    try {
-      const leadsCount = await pool.query(
-        'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
-        [id]
-      );
-      leadCount = parseInt(leadsCount.rows[0].count);
-      hasLeads = leadCount > 0;
-    } catch (dbError) {
-      console.log('Database not available for lead count check, proceeding without lead validation');
-      // Continue without database check
-    }
-
-    res.json({
-      success: true,
-      message: hasLeads 
-        ? 'Brand removal configuration generated. Note: This brand has existing leads in the database.'
-        : 'Brand removal configuration generated.',
-      brand_id: id,
-      brand_name: brand.name,
-      existing_leads: leadCount,
-      warning: hasLeads ? 'Removing this brand will not delete existing lead data, but will prevent new leads from being processed.' : null,
-      instructions: {
-        step1: 'Remove the brand configuration from brands-config.js',
-        step2: 'Redeploy your application',
-        step3: hasLeads ? 'Existing leads will remain in database for historical records' : 'Brand will be completely removed'
+    // Check if it's a dynamic brand (removable)
+    if (dynamicBrands.has(id)) {
+      const brand = dynamicBrands.get(id);
+      
+      // Check for existing leads
+      let hasLeads = false;
+      let leadCount = 0;
+      try {
+        const leadsCount = await pool.query(
+          'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
+          [id]
+        );
+        leadCount = parseInt(leadsCount.rows[0].count);
+        hasLeads = leadCount > 0;
+      } catch (dbError) {
+        console.log('Database not available for lead count check');
       }
-    });
-
+      
+      // Remove the dynamic brand
+      dynamicBrands.delete(id);
+      
+      // Also remove from status overrides
+      delete brandStatusOverrides[id];
+      
+      res.json({
+        success: true,
+        message: `Brand "${brand.name}" has been completely removed from the system`,
+        action: 'removed',
+        brand_id: id,
+        brand_name: brand.name,
+        existing_leads: leadCount,
+        note: hasLeads ? 'Existing leads remain in database for historical records' : 'Brand completely removed'
+      });
+    } else {
+      // Static brand - can only deactivate
+      const brand = getBrandWithOverrides(id);
+      if (!brand) {
+        return res.status(404).json({ error: 'Brand not found' });
+      }
+      
+      // Check for existing leads
+      let hasLeads = false;
+      let leadCount = 0;
+      try {
+        const leadsCount = await pool.query(
+          'SELECT COUNT(*) as count FROM leads WHERE brand_id = $1',
+          [id]
+        );
+        leadCount = parseInt(leadsCount.rows[0].count);
+        hasLeads = leadCount > 0;
+      } catch (dbError) {
+        console.log('Database not available for lead count check');
+      }
+      
+      // Deactivate static brand
+      brandStatusOverrides[id] = false;
+      
+      res.json({
+        success: true,
+        message: `Static brand "${brand.name}" has been deactivated`,
+        action: 'deactivated',
+        brand_id: id,
+        brand_name: brand.name,
+        existing_leads: leadCount,
+        note: 'Static brands can only be deactivated, not removed. Use the toggle button to reactivate.'
+      });
+    }
+    
   } catch (error) {
     console.error('Delete integration error:', error);
     res.status(500).json({ error: 'Failed to delete integration' });
@@ -913,12 +1012,19 @@ app.post('/api/test-lead', async (req, res) => {
       return res.status(400).json({ error: 'Brand ID is required' });
     }
 
-    const brand = getBrand(brandId);
+    // Get brand (static or dynamic)
+    let brand = getBrand(brandId);
+    if (!brand) {
+      brand = dynamicBrands.get(brandId);
+    }
+    
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    if (!brand.active) {
+    // Check if brand is active (considering overrides)
+    const isActive = brandStatusOverrides[brandId] !== undefined ? brandStatusOverrides[brandId] : brand.active;
+    if (!isActive) {
       return res.status(400).json({ error: 'Brand is currently inactive' });
     }
 
