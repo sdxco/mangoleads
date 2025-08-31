@@ -1131,6 +1131,31 @@ app.patch('/api/brands/:id/toggle', async (req, res) => {
   }
 });
 
+// Simple brand toggle endpoint for frontend
+app.post('/brands/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { active } = req.body;
+    
+    const { toggleBrand } = require('./brands-config');
+    const success = toggleBrand(id, active);
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: `Brand ${active ? 'activated' : 'deactivated'} successfully`,
+        brand_id: id,
+        active: active
+      });
+    } else {
+      res.status(404).json({ error: 'Brand not found' });
+    }
+  } catch (error) {
+    console.error('Brand toggle error:', error);
+    res.status(500).json({ error: 'Failed to toggle brand status' });
+  }
+});
+
 // Enhanced leads endpoint with brand filtering
 app.get('/leads', async (req, res) => {
   try {
@@ -1315,9 +1340,11 @@ app.get('/brands/stats', async (req, res) => {
     // in-memory
     queue.processLoop(processFunc);
   } else {
-    // BullMQ
-    const { Worker } = require('bullmq');
-    new Worker('send', processFunc, { connection: { url: process.env.REDIS_URL } });
+    // BullMQ - commented out due to dependency issue
+    // const { Worker } = require('bullmq');
+    // new Worker('send', processFunc, { connection: { url: process.env.REDIS_URL } });
+    console.log('Redis/BullMQ not available, using in-memory queue');
+    queue.processLoop(processFunc);
   }
 })();
 

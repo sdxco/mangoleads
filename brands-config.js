@@ -1,63 +1,24 @@
 /**
- * Multi-Brand Configuration for MangoLeads CRM
- * Add new brands here easily
+ * Brand Configuration for MangoLeads CRM
+ * Professional lead management system
  */
 
 const brands = {
-  // Mock Brand for Testing - No External API
-  '1000': {
-    name: 'Mock Trading Test',
+  // Main Demo Brand for Testing and Development
+  'demo': {
+    name: 'Demo Trading Platform',
     trackerUrl: null, // No external URL - stores locally only
     affId: '28215',
     offerId: '1000',
     active: true,
-    type: 'mock', // Special type for internal testing
+    type: 'demo',
     requirements: ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
-    description: 'Mock brand for testing - stores leads in CRM database only'
-  },
-
-  // Example Brand 2: Trading Platform
-  '2000': {
-    name: 'Trading Platform Demo',
-    trackerUrl: 'https://httpbin.org/post', // Test URL for now
-    affId: '28215',
-    offerId: '2000',
-    active: true,
-    requirements: ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
-    description: 'Demo trading platform for testing'
-  },
-
-  // Example Brand 3: Forex Broker
-  '3000': {
-    name: 'Forex Broker Demo',
-    trackerUrl: 'https://httpbin.org/post', // Test URL for now
-    affId: '45123',
-    offerId: '3000',
-    active: true,
-    requirements: ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country'],
-    description: 'Demo forex broker for testing'
-  },
-
-  // Example Brand 4: Crypto Exchange
-  '4000': {
-    name: 'Crypto Exchange Demo',
-    trackerUrl: 'https://httpbin.org/post', // Test URL for now
-    affId: '78901',
-    offerId: '4000',
-    active: true,
-    requirements: ['first_name', 'last_name', 'email', 'phonecc', 'phone', 'country', 'age'],
-    description: 'Demo crypto exchange - requires age field'
-  },
-
-  // Inactive brand example
-  '9999': {
-    name: 'Inactive Brand',
-    trackerUrl: 'https://inactive.com/api',
-    affId: '99999',
-    offerId: '9999',
-    active: false,
-    requirements: ['first_name', 'last_name', 'email'],
-    description: 'This brand is disabled'
+    description: 'Demo brand for testing and development - stores leads in CRM database only',
+    config: {
+      conversion_tracking: true,
+      lead_validation: true,
+      auto_processing: true
+    }
   }
 };
 
@@ -119,23 +80,16 @@ function addBrand(brandId, brandConfig) {
 }
 
 /**
- * Deactivate a brand
+ * Toggle brand active status
  * @param {string} brandId - Brand identifier
+ * @param {boolean} active - New active status
  */
-function deactivateBrand(brandId) {
+function toggleBrand(brandId, active) {
   if (brands[brandId]) {
-    brands[brandId].active = false;
+    brands[brandId].active = active;
+    return true;
   }
-}
-
-/**
- * Activate a brand
- * @param {string} brandId - Brand identifier
- */
-function activateBrand(brandId) {
-  if (brands[brandId]) {
-    brands[brandId].active = true;
-  }
+  return false;
 }
 
 module.exports = {
@@ -144,6 +98,5 @@ module.exports = {
   getActiveBrands,
   validateLeadData,
   addBrand,
-  deactivateBrand,
-  activateBrand
+  toggleBrand
 };

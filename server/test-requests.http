@@ -1,0 +1,70 @@
+### MangoLeads v2 API Tests
+### Make sure the test server is running first!
+### Start with: node test-server.js in the server directory
+
+### 1. Health Check
+GET http://localhost:8080/api/health
+
+### 2. Submit a Test Lead
+POST http://localhost:8080/api/leads/intake
+Content-Type: application/json
+x-api-key: test_api_key_123
+
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "country": "US",
+  "phone": "1234567890",
+  "phonecc": "+1"
+}
+
+### 3. Submit Another Lead (Different Country)
+POST http://localhost:8080/api/leads/intake
+Content-Type: application/json
+x-api-key: test_api_key_123
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane.smith@example.com", 
+  "country": "CA",
+  "phone": "9876543210",
+  "phonecc": "+1"
+}
+
+### 4. Test Invalid Lead (Missing Required Fields)
+POST http://localhost:8080/api/leads/intake
+Content-Type: application/json
+x-api-key: test_api_key_123
+
+{
+  "first_name": "Invalid",
+  "email": ""
+}
+
+### 5. Test Unauthorized Request (Wrong API Key)
+POST http://localhost:8080/api/leads/intake
+Content-Type: application/json
+x-api-key: wrong_key
+
+{
+  "first_name": "Test",
+  "email": "test@example.com",
+  "country": "US"
+}
+
+### 6. Get All Leads
+GET http://localhost:8080/api/leads
+
+### 7. Get Logs for Lead ID 1
+GET http://localhost:8080/api/leads/1/logs
+
+### 8. Get Logs for Lead ID 2  
+GET http://localhost:8080/api/leads/2/logs
+
+### 9. Re-dispatch Lead ID 1
+POST http://localhost:8080/api/leads/1/dispatch
+
+### 10. Re-dispatch Lead ID 2
+POST http://localhost:8080/api/leads/2/dispatch

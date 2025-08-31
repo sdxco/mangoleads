@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangoLeads v2 - Landing Page Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007cba; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .success { color: green; margin-top: 10px; }
+        .error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Get Started with MangoLeads</h1>
+    <p>Fill out the form below to receive more information about our trading platform.</p>
+
+    <form id="lead-form">
+        <div class="form-group">
+            <label for="first_name">First Name *</label>
+            <input type="text" id="first_name" name="first_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" id="last_name" name="last_name">
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="phonecc">Country Code</label>
+            <input type="text" id="phonecc" name="phonecc" placeholder="+1, +44, +39, etc.">
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone">
+        </div>
+        
+        <div class="form-group">
+            <label for="country">Country *</label>
+            <select id="country" name="country" required>
+                <option value="">Select Country</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="DE">Germany</option>
+                <option value="FR">France</option>
+                <option value="IT">Italy</option>
+                <option value="ES">Spain</option>
+                <option value="AU">Australia</option>
+                <option value="JP">Japan</option>
+                <option value="IL">Israel</option>
+            </select>
+        </div>
+        
+        <button type="submit">Get Started</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('lead-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Submitting...';
+            
+            try {
+                const fd = new FormData(e.target);
+                const body = Object.fromEntries(fd.entries());
+                
+                // Get user IP (optional)
+                try {
+                    const ipResponse = await fetch('https://api.ipify.org?format=json');
+                    const ipData = await ipResponse.json();
+                    body.user_ip = ipData.ip;
+                } catch (ipError) {
+                    console.log('Could not get IP:', ipError);
+                    body.user_ip = '';
+                }
+                
+                // Add UTM parameters if present
+                const urlParams = new URLSearchParams(window.location.search);
+                body.utm_source = urlParams.get('utm_source') || '';
+                body.utm_medium = urlParams.get('utm_medium') || '';
+                body.utm_campaign = urlParams.get('utm_campaign') || '';
+                
+                const response = await fetch('http://localhost:8080/api/leads/intake', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': 'supersecret_ingest_key'
+                    },
+                    body: JSON.stringify(body)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="success">Thank you! Your lead has been submitted successfully. Reference ID: ${result.id}</div>`;
+                    document.getElementById('lead-form').reset();
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error: ${result.error?.message || JSON.stringify(result.error)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

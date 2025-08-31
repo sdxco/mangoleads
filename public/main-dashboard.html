@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangoLeads CRM - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Performance optimizations */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            will-change: transform;
+        }
+        .glass-effect {
+            backdrop-filter: blur(16px);
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            will-change: transform;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            border-radius: 8px;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s ease;
+            will-change: transform;
+        }
+        .status-queued { 
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
+            color: white; 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 600;
+        }
+        .status-sent { 
+            background: linear-gradient(135deg, #10b981, #059669); 
+            color: white; 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 600;
+        }
+        .user-role-admin {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .user-role-affiliate {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- Header -->
+    <header class="glass-effect shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="text-3xl">🥭</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">MangoLeads CRM</h1>
+                        <p class="text-sm text-gray-600">Professional Lead Management System</p>
+                    </div>
+                </div>
+                
+                <!-- User Info -->
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="flex items-center space-x-2">
+                            <span id="userName" class="font-medium text-gray-800">Loading...</span>
+                            <span id="userRole" class="user-role-admin">USER</span>
+                        </div>
+                        <div class="text-sm text-gray-600">Welcome back!</div>
+                    </div>
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                        <span id="userInitials">?</span>
+                    </div>
+                    <button 
+                        id="logoutBtn"
+                        class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200"
+                    >
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Navigation Tabs -->
+        <div class="glass-effect rounded-xl p-1 mb-8 inline-flex space-x-1">
+            <button class="tab-btn active px-6 py-3 rounded-lg font-medium text-gray-700 transition-all duration-200" data-tab="dashboard">
+                <i class="fas fa-chart-line mr-2"></i>Dashboard
+            </button>
+            <button class="tab-btn px-6 py-3 rounded-lg font-medium text-gray-700 transition-all duration-200" data-tab="leads">
+                <i class="fas fa-users mr-2"></i>Leads
+            </button>
+            <button id="affiliatesTabBtn" class="tab-btn px-6 py-3 rounded-lg font-medium text-gray-700 transition-all duration-200" data-tab="affiliates">
+                <i class="fas fa-handshake mr-2"></i>Affiliates
+            </button>
+            <button id="offersTabBtn" class="tab-btn px-6 py-3 rounded-lg font-medium text-gray-700 transition-all duration-200" data-tab="offers">
+                <i class="fas fa-bullhorn mr-2"></i>Offers
+            </button>
+            <button id="brandsTabBtn" class="tab-btn px-6 py-3 rounded-lg font-medium text-gray-700 transition-all duration-200" data-tab="brands">
+                <i class="fas fa-tags mr-2"></i>Brands
+            </button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content">
+            <!-- Stats Cards -->
+            <div id="statsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Loading stats... -->
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div class="h-8 bg-gray-300 rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div class="h-8 bg-gray-300 rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div class="h-8 bg-gray-300 rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div class="h-8 bg-gray-300 rounded w-1/2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <div class="glass-effect rounded-xl p-6 mb-8">
+                <div class="text-center">
+                    <div class="text-6xl mb-4">�</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Welcome to Your Lead Management Hub!</h2>
+                    <p class="text-gray-600 mb-6">Track, manage, and convert your leads with powerful analytics and affiliate management tools.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div class="text-green-600 text-2xl mb-2">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h3 class="font-semibold text-green-800">Lead Tracking</h3>
+                            <p class="text-green-600 text-sm">Monitor all lead details and conversion rates</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="text-blue-600 text-2xl mb-2">
+                                <i class="fas fa-handshake"></i>
+                            </div>
+                            <h3 class="font-semibold text-blue-800">Affiliate Network</h3>
+                            <p class="text-blue-600 text-sm">Manage affiliates and commission tracking</p>
+                        </div>
+                        
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div class="text-purple-600 text-2xl mb-2">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h3 class="font-semibold text-purple-800">Real-time Analytics</h3>
+                            <p class="text-purple-600 text-sm">Live performance metrics and insights</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leads Tab -->
+        <div id="leadsTab" class="tab-content hidden">
+            <div class="glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-users mr-2 text-purple-600"></i>Lead Management
+                    </h2>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Contact</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">IP Address</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Traffic Source</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Affiliate</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Value</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-8 text-gray-500">
+                                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                    <div>Loading leads...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Affiliates Tab -->
+        <div id="affiliatesTab" class="tab-content hidden">
+            <div class="glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-handshake mr-2 text-purple-600"></i>Affiliate Partners
+                    </h2>
+                </div>
+                
+                <div id="affiliatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="text-center py-8 text-gray-500 col-span-full">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <div>Loading affiliates...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offers Tab -->
+        <div id="offersTab" class="tab-content hidden">
+            <div class="glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-bullhorn mr-2 text-purple-600"></i>Available Offers
+                    </h2>
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-1"></i>Landing pages you can promote
+                    </div>
+                </div>
+                
+                <div id="offersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="text-center py-8 text-gray-500 col-span-full">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <div>Loading offers...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brands Tab -->
+        <div id="brandsTab" class="tab-content hidden">
+            <div class="glass-effect rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-tags mr-2 text-purple-600"></i>Brand Management
+                    </h2>
+                </div>
+                
+                <div id="brandsContainer">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <div>Loading brands...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let authToken = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+            initializeEventListeners();
+        });
+
+        // Check authentication
+        async function checkAuthentication() {
+            authToken = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('userData');
+
+            if (!authToken || !userData) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/validate', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Invalid token');
+                }
+
+                const result = await response.json();
+
+                if (!result.valid) {
+                    throw new Error('Session expired');
+                }
+
+                currentUser = result.user;
+                setupUserInterface();
+                loadDashboardData();
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Setup user interface
+        function setupUserInterface() {
+            try {
+                document.getElementById('userName').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+                document.getElementById('userRole').textContent = currentUser.role.toUpperCase();
+                document.getElementById('userRole').className = `user-role-${currentUser.role}`;
+                document.getElementById('userInitials').textContent = 
+                    `${currentUser.firstName.charAt(0)}${currentUser.lastName.charAt(0)}`;
+
+                // Show/hide tabs based on role
+                if (currentUser.role === 'admin') {
+                    // Admin sees: Dashboard, Leads, Affiliates, Brands
+                    document.getElementById('affiliatesTabBtn').style.display = 'inline-flex';
+                    document.getElementById('offersTabBtn').style.display = 'none';
+                    document.getElementById('brandsTabBtn').style.display = 'inline-flex';
+                } else {
+                    // Affiliate sees: Dashboard, Leads, Offers (no Affiliates or Brands)
+                    document.getElementById('affiliatesTabBtn').style.display = 'none';
+                    document.getElementById('offersTabBtn').style.display = 'inline-flex';
+                    document.getElementById('brandsTabBtn').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error setting up user interface:', error);
+            }
+        }
+
+        // Initialize event listeners
+        function initializeEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabName = this.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            try {
+                // Update active button
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+                if (targetBtn) {
+                    targetBtn.classList.add('active');
+                }
+
+                // Show corresponding tab content
+                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+                const targetTab = document.getElementById(`${tabName}Tab`);
+                if (targetTab) {
+                    targetTab.classList.remove('hidden');
+                }
+
+                // Load tab-specific data
+                switch(tabName) {
+                    case 'leads':
+                        loadLeads();
+                        break;
+                    case 'affiliates':
+                        if (currentUser.role === 'admin') {
+                            loadAffiliates();
+                        }
+                        break;
+                    case 'offers':
+                        if (currentUser.role !== 'admin') {
+                            loadOffers();
+                        }
+                        break;
+                    case 'brands':
+                        if (currentUser.role === 'admin') {
+                            loadBrands();
+                        }
+                        break;
+                }
+            } catch (error) {
+                console.error('Error switching tabs:', error);
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const stats = await response.json();
+                
+                renderStatsCards(stats);
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Render stats cards
+        function renderStatsCards(stats) {
+            const statsGrid = document.getElementById('statsGrid');
+            
+            statsGrid.innerHTML = `
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Leads</p>
+                            <p class="text-2xl font-bold text-gray-900">${stats.total || 0}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Sent Leads</p>
+                            <p class="text-2xl font-bold text-gray-900">${stats.sent || 0}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-paper-plane text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Active Affiliates</p>
+                            <p class="text-2xl font-bold text-gray-900">${stats.active_affiliates || 0}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-handshake text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-effect rounded-xl p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Commissions</p>
+                            <p class="text-2xl font-bold text-gray-900">$${stats.total_commissions || 0}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-dollar-sign text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load leads
+        async function loadLeads() {
+            try {
+                const response = await fetch('/api/leads', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+                
+                renderLeadsTable(data.leads);
+            } catch (error) {
+                console.error('Error loading leads:', error);
+            }
+        }
+
+        // Render leads table
+        function renderLeadsTable(leads) {
+            const tbody = document.getElementById('leadsTableBody');
+            
+            if (leads.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-8 text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-4 block"></i>
+                            No leads found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = leads.map(lead => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4">
+                        <div class="font-medium">${lead.firstName} ${lead.lastName}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm">${lead.email}</div>
+                        <div class="text-xs text-gray-500">${lead.phone}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm">${lead.country}</div>
+                        <div class="text-xs text-gray-500">${lead.city}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">${lead.ip}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm">${lead.trafficSource}</div>
+                        <div class="text-xs text-gray-500" title="${lead.landingPage}">
+                            ${lead.landingPage ? lead.landingPage.substring(0, 30) + '...' : 'N/A'}
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm font-medium">${lead.affiliateCode || 'Direct'}</div>
+                        <div class="text-xs text-gray-500">$${lead.commission || 0}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm font-medium">$${lead.conversionValue || 0}</div>
+                        <div class="text-xs text-gray-500">${lead.status === 'converted' ? 'Converted' : 'Pending'}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="status-${lead.status}">${lead.status}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-sm">${new Date(lead.created_at).toLocaleDateString()}</div>
+                        <div class="text-xs text-gray-500">${new Date(lead.created_at).toLocaleTimeString()}</div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load affiliates
+        async function loadAffiliates() {
+            if (currentUser.role !== 'admin') return;
+
+            try {
+                const response = await fetch('/api/affiliates', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+                
+                renderAffiliates(data.affiliates);
+            } catch (error) {
+                console.error('Error loading affiliates:', error);
+            }
+        }
+
+        // Render affiliates
+        function renderAffiliates(affiliates) {
+            const grid = document.getElementById('affiliatesGrid');
+            
+            if (affiliates.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-gray-500">
+                        <i class="fas fa-handshake text-4xl mb-4 block"></i>
+                        No affiliates found
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = affiliates.map(affiliate => `
+                <div class="bg-white rounded-xl p-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                                ${affiliate.firstName.charAt(0)}${affiliate.lastName.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">${affiliate.firstName} ${affiliate.lastName}</h3>
+                                <p class="text-sm text-gray-600">${affiliate.affiliateCode}</p>
+                            </div>
+                        </div>
+                        <span class="${affiliate.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-2 py-1 rounded-full text-xs font-medium">
+                            ${affiliate.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Leads:</span>
+                            <span class="font-medium">${affiliate.totalLeads}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Conversions:</span>
+                            <span class="font-medium">${affiliate.convertedLeads}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Commission Rate:</span>
+                            <span class="font-medium">${affiliate.commissionRate}%</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Pending:</span>
+                            <span class="font-medium text-green-600">$${affiliate.pendingCommissions.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load offers
+        async function loadOffers() {
+            try {
+                const response = await fetch('/api/offers', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+                
+                renderOffers(data.offers);
+            } catch (error) {
+                console.error('Error loading offers:', error);
+            }
+        }
+
+        // Render offers
+        function renderOffers(offers) {
+            const container = document.getElementById('offersGrid');
+            
+            if (offers.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 col-span-full">
+                        <i class="fas fa-bullhorn text-4xl mb-4 block"></i>
+                        No offers available
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = offers.map(offer => `
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div class="h-48 bg-gradient-to-r ${getOfferGradient(offer.category)} flex items-center justify-center">
+                        <h3 class="text-white text-xl font-bold text-center px-4">${offer.name}</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <p class="text-gray-600 text-sm mb-3">${offer.description}</p>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${offer.category}</span>
+                                <span class="font-medium text-green-600">$${offer.commission} ${offer.commissionType.replace('_', ' ')}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Conversion Rate:</span>
+                                <span class="font-medium">${offer.conversionRate}%</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Avg. Payout:</span>
+                                <span class="font-medium">$${offer.averagePayout}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Countries:</span>
+                                <span class="font-medium">${offer.countries.slice(0, 3).join(', ')}${offer.countries.length > 3 ? '...' : ''}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <div class="text-xs text-gray-600 mb-2">Your Affiliate Link:</div>
+                            <div class="bg-gray-50 p-2 rounded text-xs font-mono break-all">
+                                ${offer.landingPageUrl.replace('{{AFFILIATE_CODE}}', (currentUser && currentUser.username) ? currentUser.username.toUpperCase() : 'YOUR_CODE')}
+                            </div>
+                            <button onclick="copyToClipboard('${offer.landingPageUrl.replace('{{AFFILIATE_CODE}}', (currentUser && currentUser.username) ? currentUser.username.toUpperCase() : 'YOUR_CODE')}')" 
+                                    class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:shadow-lg transition-all">
+                                <i class="fas fa-copy mr-2"></i>Copy Link
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Helper function for offer gradients
+        function getOfferGradient(category) {
+            const gradients = {
+                'Trading': 'from-blue-500 to-purple-600',
+                'Investment': 'from-purple-500 to-pink-600',
+                'Cryptocurrency': 'from-green-500 to-blue-600',
+                'default': 'from-gray-500 to-gray-700'
+            };
+            return gradients[category] || gradients.default;
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show success feedback
+                const btn = event.target.closest('button');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                btn.classList.add('bg-green-600');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('bg-green-600');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        // Load brands
+        async function loadBrands() {
+            try {
+                const response = await fetch('/api/brands', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const brands = await response.json();
+                
+                renderBrands(brands);
+            } catch (error) {
+                console.error('Error loading brands:', error);
+            }
+        }
+
+        // Render brands
+        function renderBrands(brands) {
+            const container = document.getElementById('brandsContainer');
+            
+            container.innerHTML = brands.map(brand => `
+                <div class="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xl">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800">${brand.name}</h3>
+                                <p class="text-sm text-gray-600">${brand.description}</p>
+                            </div>
+                        </div>
+                        <span class="${brand.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-3 py-1 rounded-full text-sm font-medium">
+                            ${brand.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>
